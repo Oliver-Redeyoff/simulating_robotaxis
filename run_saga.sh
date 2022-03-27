@@ -1,1 +1,0 @@
-python3 $SUMO_HOME/tools/contributed/saga/scenarioFromOSM.py --osm target.osm.xml --out ./temp-saga --from-step 0 --to-step 7

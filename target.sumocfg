@@ -4,13 +4,29 @@
 
     <input>
         <net-file value="target.net.xml"/>
-        <route-files value="target.routes.xml"/>
+        <!-- <route-files value="base_target.routes.xml"/> -->
+        <route-files value="taxi_target.trips.xml"/>
     </input>
 
     <time>
         <begin value="25200"/>
         <step-length value="1"/>
-        <end value="86400.0"/>
+        <end value="68400.0"/>
     </time>
+
+    <processing>
+        <ignore-route-errors value="true"/>
+    </processing>
+
+    <routing>
+        <persontrip.transfer.taxi-walk value="allJunctions"/>
+        <persontrip.transfer.walk-taxi value="allJunctions"/>
+    </routing>
+
+    <taxi-device>
+        <device.taxi.dispatch-algorithm value="greedy"/>
+        <device.taxi.idle-algorithm value="randomCircling"/>
+        <device.taxi.dispatch-algorithm.output value="./out/taxi_dispatch.xml"/>
+    </taxi-device>
 
 </configuration>
