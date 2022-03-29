@@ -18,7 +18,7 @@ import traci
 
 def createTaxis():
     for i in range(0, 20, 5):
-        traci.vehicle.add(f'taxiV{i}', 'route_0', 'taxi', depart='25200', line='taxi')
+        traci.vehicle.add(f'taxi{i}', 'route_0', 'taxi', depart='25200', line='taxi')
 
 if __name__ == "__main__":
     sumoBinary = checkBinary('sumo')
