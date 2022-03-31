@@ -263,7 +263,7 @@ def run():
                         '--unsorted-input', 'true',
                         '--no-warnings', 'true']
                         
-    subprocess.check_call(duarouter_options)
+    # subprocess.check_call(duarouter_options)
 
 
     #####################################
@@ -274,11 +274,11 @@ def run():
 
     taxi_routes_root = ET.Element("routes")
 
-    taxi_def = ET.SubElement(taxi_routes_root, 'vType', {
+    ET.SubElement(taxi_routes_root, 'route', {
         'id': 'route_0',
         'edges': random.choice(list(drivable_edges))
     })
-    ET.SubElement(taxi_routes_root, 'route', {
+    taxi_def = ET.SubElement(taxi_routes_root, 'vType', {
         'id': 'taxi',
         'vClass': 'taxi'
     })

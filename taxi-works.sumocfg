@@ -3,13 +3,13 @@
 <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
 
     <input>
-        <net-file value="target.net.xml"/>
-        <!-- <route-files value="base_target.routes.xml"/> -->
-        <route-files value="taxi_target.trips.xml"/>
+        <net-file value="./temp/target.net.xml"/>
+        <!-- <route-files value="./temp/base.routes.xml"/> -->
+        <route-files value="./temp/taxi.trips.xml"/>
     </input>
 
     <time>
-        <begin value="25200"/>
+        <begin value="25000"/>
         <step-length value="1"/>
         <end value="68400.0"/>
     </time>
