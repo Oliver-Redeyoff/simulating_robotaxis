@@ -1,15 +1,16 @@
 # Import relevant libraries
 
-from dataclasses import dataclass
 import shutil
-from typing import List, Tuple
+from typing import List
 import csv
 import os
 import sys
-import pickle
 
 import xml.etree.ElementTree as ET
 from tqdm import tqdm
+
+from utilities import store
+from datatypes import lane, edge, taz
 
 if 'SUMO_HOME' in os.environ:
     sys.path.append(os.path.join(os.environ['SUMO_HOME'], 'tools/contributed/saga'))
@@ -17,38 +18,6 @@ if 'SUMO_HOME' in os.environ:
 else:
     sys.exit("please declare environment variable 'SUMO_HOME'")
 
-# Declare dataclasses
-Coord = Tuple[float, float]
-
-@dataclass
-class lane:
-    id: str
-    speed: float
-    shape: List[Coord]
-    allow: List[str]
-    disallow: List[str]
-
-@dataclass
-class edge:
-    id: str
-    is_drivable: bool
-    lanes: List[lane]
-
-@dataclass
-class count():
-    hour: int
-    value_sum: int
-    value_count: int
-
-@dataclass
-class taz:
-    id: str
-    name: str
-    edges: List[str]
-    drivable_edges: List[str]
-    node_count: int
-    weight: float
-    area: float
 
 def normalise_shape(shape_str, origin):
     shape = [list(map(float, point.split(","))) for point in shape_str.split(" ")]
@@ -79,7 +48,7 @@ def run():
     ############################################
     # Extract all edges and their UTM position #
     ############################################
-    net_tree = ET.parse('./deduce_taz_out/osm.net.xml')
+    net_tree = ET.parse('./temp/target.net.xml')
     net_root = net_tree.getroot()
 
     # get origin UTM position
@@ -91,7 +60,7 @@ def run():
 
     edges: List[edge] = []
 
-    for edge_element in tqdm(net_root.findall('edge'), desc='Extracting lanes'):
+    for edge_element in tqdm(net_root.findall('edge'), desc='Extracting lanes from network'):
 
         # instantiate new edge
         new_edge = edge(
@@ -123,14 +92,14 @@ def run():
     ###################################
     tazs: List[taz] = []
 
-    taz_tree = ET.parse('./deduce_taz_out/osm_taz.xml')
+    taz_tree = ET.parse('./temp_saga/osm_taz.xml')
     taz_root = taz_tree.getroot()
     taz_total_weight = 0
 
     drivable_edges = set([edge_.id for edge_ in edges if edge_.is_drivable])
 
     # instantiate tazs
-    for taz_ in tqdm(taz_root):
+    for taz_ in tqdm(taz_root, desc='Generating tazs'):
         tazs.append(taz(
             taz_.attrib['id'],
             '',
@@ -141,7 +110,7 @@ def run():
             0
         ))
 
-    with open('./deduce_taz_out/osm_taz_weight.csv', mode='r') as csv_taz_weights:
+    with open('./temp_saga/osm_taz_weight.csv', mode='r') as csv_taz_weights:
         csv_reader = csv.DictReader(csv_taz_weights)
         line_count = 0
         for row in csv_reader:
@@ -160,20 +129,13 @@ def run():
     ###############################
     # Write taz data data to file #
     ###############################
-    with open('./temp/tazs.pkl', 'wb') as outp:
-        for taz_ in tazs:
-            pickle.dump(taz_, outp, pickle.HIGHEST_PROTOCOL)
+    store(tazs, './temp/tazs.pkl')
 
     ###############################################
     # Write edges and drivable edges data to file #
     ###############################################
-    with open('./temp/edges.pkl', 'wb') as outp:
-        for edge_ in edges:
-            pickle.dump(edge_, outp, pickle.HIGHEST_PROTOCOL)
-
-    with open('./temp/drivable_edges.pkl', 'wb') as outp:
-        for drivable_edge in drivable_edges:
-            pickle.dump(drivable_edge, outp, pickle.HIGHEST_PROTOCOL)
+    store(edges, './temp/edges.pkl')
+    store(drivable_edges, './temp/drivable_edges.pkl')
             
 
 if __name__ == '__main__':

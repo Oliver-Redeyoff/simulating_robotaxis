@@ -1,112 +1,15 @@
 # Import relevant libraries
 
-from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List
 import math
-import subprocess
 import random
-import pickle
 
 import xml.etree.ElementTree as ET
 from tqdm import tqdm
 
-# Declare dataclasses
+from datatypes import edge, simulation, trip, commuter
+from utilities import retrieve, store
 
-Coord = Tuple[float, float]
-
-@dataclass
-class lane:
-    id: str
-    speed: float
-    shape: List[Coord]
-    allow: List[str]
-    disallow: List[str]
-
-@dataclass
-class edge:
-    id: str
-    is_drivable: bool
-    lanes: List[lane]
-
-@dataclass
-class count():
-    hour: int
-    value_sum: int
-    value_count: int
-
-@dataclass
-class count_point():
-    id: str
-    road_name: str
-    latitude: float
-    longitude: float
-    utm: any
-    counts: List[count]
-    closest_lane: Tuple[float, lane]
-
-@dataclass
-class taz:
-    id: str
-    name: str
-    edges: List[str]
-    drivable_edges: List[str]
-    node_count: int
-    weight: float
-    area: float
-
-@dataclass
-class simulation:
-    start_time: int
-    end_time: int
-    duration: int
-
-@dataclass
-class trip:
-    id: int
-    depart: float
-    from_: str
-    to: str
-    def __lt__(self, other):
-         return self.depart < other.depart
-
-@dataclass
-class commuter:
-    home_edge: edge
-    destination_edge: edge
-    trip1: trip
-    trip2: trip
-
-@dataclass
-class tripinfo:
-    trip_id: int
-    duration: float
-    waiting_time: float
-
-
-def get_pickle(name):
-    object_list = []
-    with (open(name, "rb")) as openfile:
-        while True:
-            try:
-                object_list.append(pickle.load(openfile))
-            except EOFError:
-                break
-    return object_list
-
-def indent(elem, level=0):
-    i = "\n" + level*"  "
-    if len(elem):
-        if not elem.text or not elem.text.strip():
-            elem.text = i + "  "
-        if not elem.tail or not elem.tail.strip():
-            elem.tail = i
-        for elem in elem:
-            indent(elem, level+1)
-        if not elem.tail or not elem.tail.strip():
-            elem.tail = i
-    else:
-        if level and (not elem.tail or not elem.tail.strip()):
-            elem.tail = i
 
 def get_random_drivable_edge(tazs, edges, drivable_edges) -> edge:
     if (random.random() <= 0.5):
@@ -127,17 +30,24 @@ def run():
     # Retrieve data #
     #################
 
-    count_points = get_pickle('./temp/count_points.pkl')
-    tazs = get_pickle('./temp/tazs.pkl')
-    edges = get_pickle('./temp/edges.pkl')
-    drivable_edges = get_pickle('./temp/drivable_edges.pkl')
+    count_points = retrieve('./temp/filtered_count_points.pkl')
+    tazs = retrieve('./temp/tazs.pkl')
+    edges = retrieve('./temp/edges.pkl')
+    drivable_edges = retrieve('./temp/drivable_edges.pkl')
 
 
     ############################################################
     # Calculate traffic distribution based on count point data #
     ############################################################
 
-    simulation_ = simulation(23, 0, 0)
+    simulation_ = simulation(
+        23, 
+        0,
+        0, 
+        0,
+        'target.net.xml',
+        'base.routes.xml',
+        'taxi.routes.xml')
 
     aggregated_counts = [{'sum': 0, 'count': 0, 'average': 0, 'distribution_value': 0} for i in range(1, 23)];
 
@@ -146,15 +56,16 @@ def run():
         for count_ in count_point_.counts:
             hour = count_.hour
 
-            if (hour < simulation_.start_time):
-                simulation_.start_time = hour
-            if (hour > simulation_.end_time):
-                simulation_.end_time = hour
+            if (hour < simulation_.start_hour):
+                simulation_.start_hour = hour
+            if (hour > simulation_.end_hour):
+                simulation_.end_hour = hour
 
             aggregated_counts[count_.hour]['sum'] += count_.value_sum
             aggregated_counts[count_.hour]['count'] += count_.value_count
-
-    simulation_.duration = (simulation_.end_time-simulation_.start_time)*3600
+    
+    simulation_.start_time = simulation_.start_hour*3600-200
+    simulation_.end_time = simulation_.end_hour*3600
 
     # calculate distribution from aggregated data
     total = 0;
@@ -181,7 +92,7 @@ def run():
     total_trips = total_commuters*2
 
     commuters: List[commuter] = [commuter('', '', None, None) for i in range(total_commuters)]
-    for commuter_ in tqdm(commuters):
+    for commuter_ in tqdm(commuters, desc='Generating commuters'):
         commuter_.home_edge = get_random_drivable_edge(tazs, edges, drivable_edges)
         commuter_.destination_edge = get_random_drivable_edge(tazs, edges, drivable_edges)
 
@@ -192,7 +103,7 @@ def run():
 
     # For each hour, generate trips
     trip_id = 0
-    for hour in tqdm(range(simulation_.start_time, simulation_.end_time+1)):
+    for hour in tqdm(range(simulation_.start_hour, simulation_.end_hour+1), desc='Generating trips'):
         trip_count = math.floor(total_trips * aggregated_counts[hour]['distribution_value'])
         generated_trip_count = 0
         processed_commuters = []
@@ -222,115 +133,16 @@ def run():
             generated_trip_count += 1
             trip_id += 1
 
+    trips: List[trip] = []
+    trips.extend([commuter_.trip1 for commuter_ in commuters if commuter_.trip1 != None])
+    trips.extend([commuter_.trip2 for commuter_ in commuters if commuter_.trip2 != None])
+    trips.sort()
 
-    #######################
-    # Store trips in file #
-    #######################
-
-    base_routes_root = ET.Element("routes")
-
-    for commuter_ in tqdm(commuters):
-        if(commuter_.trip1):
-            ET.SubElement(base_routes_root, 'trip', {
-                'id': str(commuter_.trip1.id), 
-                'depart': str(commuter_.trip1.depart),
-                'from': commuter_.trip1.from_,
-                'to': commuter_.trip1.to
-            })
-        if(commuter_.trip2):
-            ET.SubElement(base_routes_root, 'trip', {
-                'id': str(commuter_.trip2.id), 
-                'depart': str(commuter_.trip2.depart),
-                'from': commuter_.trip2.from_,
-                'to': commuter_.trip2.to
-            })
-
-    base_routes_tree = ET.ElementTree(base_routes_root)
-    indent(base_routes_root)
-    base_routes_tree.write("./temp/base.trips.xml", encoding="utf-8", xml_declaration=True)
-
-
-    #################################################
-    # Generate base routes using the duarouter tool #
-    #################################################
-
-    duarouter_options = ['duarouter',
-                        '--net-file', './temp/target.net.xml',
-                        '--route-files', './temp/base.trips.xml',
-                        '--output-file', './temp/base.routes.xml',
-                        '--ignore-errors', 'true',
-                        '--repair', 'true',
-                        '--unsorted-input', 'true',
-                        '--no-warnings', 'true']
-                        
-    # subprocess.check_call(duarouter_options)
-
-
-    #####################################
-    # Generate taxi mobility definition #
-    #####################################
-
-    taxi_count = 0
-
-    taxi_routes_root = ET.Element("routes")
-
-    ET.SubElement(taxi_routes_root, 'route', {
-        'id': 'route_0',
-        'edges': random.choice(list(drivable_edges))
-    })
-    taxi_def = ET.SubElement(taxi_routes_root, 'vType', {
-        'id': 'taxi',
-        'vClass': 'taxi'
-    })
-    ET.SubElement(taxi_def, 'param', {
-        'key': 'has.taxi.device',
-        'value': 'true'
-    })
-
-    all_trips: List[trip] = []
-    all_trips.extend([commuter_.trip1 for commuter_ in commuters if commuter_.trip1 != None])
-    all_trips.extend([commuter_.trip2 for commuter_ in commuters if commuter_.trip2 != None])
-    all_trips.sort()
-
-    for taxi_id in range(taxi_count):
-        taxi_vehicle = ET.SubElement(taxi_routes_root, 'vehicle', {
-            'id': 'v'+str(taxi_id), 
-            'depart': str(simulation_.start_time*3600) + '.00',
-            'type': 'taxi',
-            'line': 'taxi'
-        })
-        ET.SubElement(taxi_vehicle, 'route', {
-            'edges': random.choice(list(drivable_edges))
-        })
-
-    person_id = 0
-    # for trip_ in tqdm(all_trips):
-    #     taxi_vehicle = ET.SubElement(taxi_routes_root, 'person', {
-    #         'id': 'p'+str(person_id), 
-    #         'depart': str(trip_.depart),
-    #         'color': 'green'
-    #     })
-    #     ET.SubElement(taxi_vehicle, 'ride', {
-    #         'from': trip_.from_,
-    #         'to': trip_.to,
-    #         'lines': 'taxi'
-    #     })
-    #     person_id += 1
-
-    taxi_vehicle = ET.SubElement(taxi_routes_root, 'person', {
-        'id': 'p'+str(person_id), 
-        'depart': str(all_trips[0].depart),
-        'color': 'green'
-    })
-    ET.SubElement(taxi_vehicle, 'ride', {
-        'from': all_trips[0].from_,
-        'to': all_trips[0].to,
-        'lines': 'taxi'
-    })
-
-    taxi_routes_tree = ET.ElementTree(taxi_routes_root)
-    indent(taxi_routes_root)
-    taxi_routes_tree.write("./temp/taxi.trips.xml", encoding="utf-8", xml_declaration=True)
+    ######################################
+    # Store trips and simulation in file #
+    ######################################
+    store(trips, './temp/trips.pkl')
+    store(simulation_, './temp/simulation.pkl')
         
 
 if __name__ == '__main__':

@@ -1,96 +1,27 @@
 # Import relevant libraries
 
-from dataclasses import dataclass
-from typing import List, Tuple
-import pickle
+from typing import List
 import csv
 import json
 import requests
-from enum import Enum
 import os
 import sys
 
 import folium
 import xml.etree.ElementTree as ET
 import utm
-from tqdm import tqdm
-from matplotlib import pyplot as plt
 from pyproj import Transformer
 from shapely.geometry import shape, Point
-import http.client as httplib
-import urllib.parse as urlparse
+
+from datatypes import count, count_point, p
+from utilities import create_dir, store
 
 if 'SUMO_HOME' in os.environ:
     sys.path.append(os.path.join(os.environ['SUMO_HOME'], 'tools'))
     import osmGet
 else:
     sys.exit("please declare environment variable 'SUMO_HOME'")
-
-class p(Enum):
-    count_point_id = 0
-    direction_of_travel = 1
-    year = 2
-    count_date = 3
-    hour = 4
-    region_id = 5
-    region_name = 6
-    local_authority_id = 7
-    local_authority_name = 8
-    road_name = 9
-    road_type = 10
-    start_junction_road_name = 11
-    end_junction_road_name = 12
-    easting = 13
-    northing = 14
-    latitude = 15
-    longitude = 16
-    link_length_km = 17
-    link_length_miles = 18
-    pedal_cycles = 19
-    two_wheeled_motor_vehicles = 20
-    cars_and_taxis = 21
-    buses_and_coaches = 22
-    lgvs = 23
-    hgvs_2_rigid_axle = 24
-    hgvs_3_rigid_axle = 25
-    hgvs_4_or_more_rigid_axle = 26
-    hgvs_3_or_4_articulated_axle = 27
-    hgvs_5_articulated_axle = 28
-    hgvs_6_articulated_axle = 29
-    all_hgvs = 30
-    all_motor_vehicles = 31
-
-Coord = Tuple[float, float]
-
-@dataclass
-class lane:
-    id: str
-    speed: float
-    shape: List[Coord]
-    allow: List[str]
-    disallow: List[str]
-
-@dataclass
-class edge:
-    id: str
-    is_drivable: bool
-    lanes: List[lane]
-
-@dataclass
-class count():
-    hour: int
-    value_sum: int
-    value_count: int
-
-@dataclass
-class count_point():
-    id: str
-    road_name: str
-    latitude: float
-    longitude: float
-    utm: any
-    counts: List[count]
-    closest_lane: Tuple[float, lane]
+    
 
 def aggregate_counts(count_point_: count_point, raw_count):
 
@@ -126,6 +57,7 @@ def run():
     #################################################
     # Download osm data using bounding box of place #
     #################################################
+    create_dir('./temp')
     status = 504
     attempts = 1
     while (status == 504):
@@ -207,9 +139,7 @@ def run():
     ##################################
     # Write count_point data to file #
     ##################################
-    with open('./temp/count_points.pkl', 'wb') as outp:
-        for count_point_ in count_points:
-            pickle.dump(count_point_, outp, pickle.HIGHEST_PROTOCOL)
+    store(count_points, './temp/count_points.pkl')
 
 if __name__ == '__main__':
     run()

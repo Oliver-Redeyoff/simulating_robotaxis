@@ -5,7 +5,7 @@
     <input>
         <net-file value="./temp/target.net.xml"/>
         <!-- <route-files value="./temp/base.routes.xml"/> -->
-        <route-files value="./temp/taxi.trips.xml"/>
+        <route-files value="./temp/taxi-works.trips.xml"/>
     </input>
 
     <time>

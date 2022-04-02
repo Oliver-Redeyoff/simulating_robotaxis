@@ -1,48 +1,15 @@
 # Import relevant libraries
 
-from dataclasses import dataclass
 from typing import List, Tuple
 import math
-import pickle
 
 import folium
 import xml.etree.ElementTree as ET
 import utm
 from tqdm import tqdm
 
-# Declare dataclasses
-
-Coord = Tuple[float, float]
-
-@dataclass
-class lane:
-    id: str
-    speed: float
-    shape: List[Coord]
-    allow: List[str]
-    disallow: List[str]
-
-@dataclass
-class edge:
-    id: str
-    is_drivable: bool
-    lanes: List[lane]
-
-@dataclass
-class count():
-    hour: int
-    value_sum: int
-    value_count: int
-
-@dataclass
-class count_point():
-    id: str
-    road_name: str
-    latitude: float
-    longitude: float
-    utm: any
-    counts: List[count]
-    closest_lane: Tuple[float, lane]
+from utilities import retrieve, store
+from datatypes import lane, edge, count_point
     
 
 # Get distance from count_point to to lane
@@ -91,24 +58,14 @@ def min_dist_to_lane(lane_: lane, count_point_: count_point) -> float:
     
     return min_dist;
 
-def get_pickle(name):
-    object_list = []
-    with (open(name, "rb")) as openfile:
-        while True:
-            try:
-                object_list.append(pickle.load(openfile))
-            except EOFError:
-                break
-    return object_list
-
 def run():
 
     # Load count_points and edges
-    edges: List[edge] = get_pickle('./temp/edges.pkl')
-    count_points: List[count_point] = get_pickle('./temp/count_points.pkl')
+    edges: List[edge] = retrieve('./temp/edges.pkl')
+    count_points: List[count_point] = retrieve('./temp/count_points.pkl')
 
     # find closest lane for each count_point
-    for count_point_ in tqdm(count_points):
+    for count_point_ in tqdm(count_points, desc='Filtering count points'):
         closest_lane: Tuple[float, lane] = (-1, None)
         
         for edge_ in edges:
@@ -128,9 +85,7 @@ def run():
 
     # m
 
-    with open('./temp/filtered_count_points.pkl', 'wb') as outp:
-        for count_point_ in count_points:
-            pickle.dump(count_point_, outp, pickle.HIGHEST_PROTOCOL)
+    store(count_points, './temp/filtered_count_points.pkl')
 
 if __name__ == '__main__':
     run()
