@@ -57,7 +57,7 @@ def run():
     #################################################
     # Download osm data using bounding box of place #
     #################################################
-    create_dir('./temp')
+    create_dir('../temp')
     status = 504
     attempts = 1
     while (status == 504):
@@ -67,7 +67,7 @@ def run():
         bbox_str = ' '+str(target_bbox['southwest']['lng'])+','+str(target_bbox['southwest']['lat'])+','+str(target_bbox['northeast']['lng'])+','+str(target_bbox['northeast']['lat'])
         status = osmGet.get(['--bbox', bbox_str,
                     '--prefix', 'target',
-                    '--output-dir', './temp'])
+                    '--output-dir', '../temp'])
         attempts += 1
 
 
@@ -139,7 +139,7 @@ def run():
     ##################################
     # Write count_point data to file #
     ##################################
-    store(count_points, './temp/count_points.pkl')
+    store(count_points, '../temp/count_points.pkl')
 
 if __name__ == '__main__':
     run()

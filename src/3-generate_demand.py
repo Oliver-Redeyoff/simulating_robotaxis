@@ -3,12 +3,22 @@
 from typing import List
 import math
 import random
+import os
+import sys
 
 import xml.etree.ElementTree as ET
 from tqdm import tqdm
 
 from datatypes import edge, simulation, trip, commuter
 from utilities import retrieve, store
+
+# we need to import python modules from the $SUMO_HOME/tools directory
+if 'SUMO_HOME' in os.environ:
+    tools = os.path.join(os.environ['SUMO_HOME'], 'tools')
+    sys.path.append(tools)
+    from sumolib.net import readNet
+else:
+    sys.exit("please declare environment variable 'SUMO_HOME'")
 
 
 def get_random_drivable_edge(tazs, edges, drivable_edges) -> edge:
@@ -30,10 +40,12 @@ def run():
     # Retrieve data #
     #################
 
-    count_points = retrieve('./temp/filtered_count_points.pkl')
-    tazs = retrieve('./temp/tazs.pkl')
-    edges = retrieve('./temp/edges.pkl')
-    drivable_edges = retrieve('./temp/drivable_edges.pkl')
+    count_points = retrieve('../temp/filtered_count_points.pkl')
+    tazs = retrieve('../temp/tazs.pkl')
+    edges = retrieve('../temp/edges.pkl')
+    drivable_edges = retrieve('../temp/drivable_edges.pkl')
+
+    net = readNet('../temp/target.net.xml', withInternal=True)
 
 
     ############################################################
@@ -93,8 +105,20 @@ def run():
 
     commuters: List[commuter] = [commuter('', '', None, None) for i in range(total_commuters)]
     for commuter_ in tqdm(commuters, desc='Generating commuters'):
-        commuter_.home_edge = get_random_drivable_edge(tazs, edges, drivable_edges)
-        commuter_.destination_edge = get_random_drivable_edge(tazs, edges, drivable_edges)
+        route_is_possible = False
+        while not route_is_possible:
+            start_edge = get_random_drivable_edge(tazs, edges, drivable_edges)
+            end_edge = get_random_drivable_edge(tazs, edges, drivable_edges)
+
+            start_sumo_edge = net.getEdge(start_edge.id)
+            end_sumo_edge = net.getEdge(end_edge.id)
+
+            shortestPath = net.getShortestPath(start_sumo_edge, end_sumo_edge, vClass="taxi")
+            
+            if (shortestPath[0] != None):
+                route_is_possible = True
+                commuter_.home_edge = start_edge
+                commuter_.destination_edge = end_edge
 
     
     ##################
@@ -141,8 +165,8 @@ def run():
     ######################################
     # Store trips and simulation in file #
     ######################################
-    store(trips, './temp/trips.pkl')
-    store(simulation_, './temp/simulation.pkl')
+    store(trips, '../temp/trips.pkl')
+    store(simulation_, '../temp/simulation.pkl')
         
 
 if __name__ == '__main__':

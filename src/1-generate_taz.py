@@ -1,10 +1,8 @@
-# Import relevant libraries
-
-import shutil
 from typing import List
 import csv
 import os
 import sys
+import subprocess
 
 import xml.etree.ElementTree as ET
 from tqdm import tqdm
@@ -14,7 +12,7 @@ from datatypes import lane, edge, taz
 
 if 'SUMO_HOME' in os.environ:
     sys.path.append(os.path.join(os.environ['SUMO_HOME'], 'tools/contributed/saga'))
-    import scenarioFromOSM
+    import generateTAZBuildingsFromOSM
 else:
     sys.exit("please declare environment variable 'SUMO_HOME'")
 
@@ -29,26 +27,50 @@ def normalise_shape(shape_str, origin):
 
 def run():
 
+    #########################
+    # Generate sumo network #
+    #########################
+    netconvert_options = ['netconvert',
+                        '--osm', '../temp/target_bbox.osm.xml',
+                        '--o', '../temp/target.net.xml',
+                        '--geometry.remove', 'true',
+                        '--ramps.guess', 'true',
+                        '--junctions.join', 'true',
+                        '--tls.guess-signals', 'true',
+                        '--tls.discard-simple', 'true',
+                        '--tls.join', 'true',
+                        '--tls.default-type', 'actuated',
+                        '--lefthand', 'true',
+                        '--edges.join', 'true',
+                        '--remove-edges.isolated', 'true']
+    subprocess.check_call(netconvert_options)
+
     #############################################################
     # Generate sumo network and deduce TAZs using the saga tool #
     #############################################################
-    saga_options = ['--osm', './temp/target_bbox.osm.xml',
-                '--out', './temp_saga',
-                '--from-step', str(0),
-                '--to-step', str(7),
-                '--lefthand']
+    # saga_options = ['--osm', './temp/target_bbox.osm.xml',
+    #             '--out', './temp_saga',
+    #             '--from-step', str(0),
+    #             '--to-step', str(7),
+    #             '--lefthand']
                 
-    scenarioFromOSM.main(saga_options)
+    # scenarioFromOSM.main(saga_options)
 
-    os.chdir('..')
+    # os.chdir('..')
 
-    shutil.copyfile('./temp_saga/osm.net.xml', './temp/target.net.xml')
+    # shutil.copyfile('./temp_saga/osm.net.xml', './temp/target.net.xml')
 
+    saga_options = ['--osm', '../temp/target_bbox.osm.xml',
+                '--net', '../temp/target.net.xml',
+                '--taz-output', '../temp/osm_taz.xml',
+                '--weight-output', '../temp/osm_taz_weight.csv',
+                '--poly-output', '../temp/poly.xml']
+    generateTAZBuildingsFromOSM.main(saga_options)
     
     ############################################
     # Extract all edges and their UTM position #
     ############################################
-    net_tree = ET.parse('./temp/target.net.xml')
+    net_tree = ET.parse('../temp/target.net.xml')
     net_root = net_tree.getroot()
 
     # get origin UTM position
@@ -92,7 +114,7 @@ def run():
     ###################################
     tazs: List[taz] = []
 
-    taz_tree = ET.parse('./temp_saga/osm_taz.xml')
+    taz_tree = ET.parse('../temp/osm_taz.xml')
     taz_root = taz_tree.getroot()
     taz_total_weight = 0
 
@@ -110,7 +132,7 @@ def run():
             0
         ))
 
-    with open('./temp_saga/osm_taz_weight.csv', mode='r') as csv_taz_weights:
+    with open('../temp/osm_taz_weight.csv', mode='r') as csv_taz_weights:
         csv_reader = csv.DictReader(csv_taz_weights)
         line_count = 0
         for row in csv_reader:
@@ -129,13 +151,13 @@ def run():
     ###############################
     # Write taz data data to file #
     ###############################
-    store(tazs, './temp/tazs.pkl')
+    store(tazs, '../temp/tazs.pkl')
 
     ###############################################
     # Write edges and drivable edges data to file #
     ###############################################
-    store(edges, './temp/edges.pkl')
-    store(drivable_edges, './temp/drivable_edges.pkl')
+    store(edges, '../temp/edges.pkl')
+    store(drivable_edges, '../temp/drivable_edges.pkl')
             
 
 if __name__ == '__main__':

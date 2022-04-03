@@ -103,4 +103,19 @@ class p(Enum):
     hgvs_6_articulated_axle = 29
     all_hgvs = 30
     all_motor_vehicles = 31
+
+class taxi_states(Enum):
+    any_state = -1      # all taxis
+    empty = 0           # taxi is waiting
+    pickup = 1          # taxi is en-route to pick a customer up
+    occupied = 2        # taxi has a customer
+    pickup_occupied = 3 # taxi has a customer but will pickup more customers
+
+class reservation_states(Enum):
+    any_state = 0
+    new = 1
+    old = 2
+    assigned = 4
+    picked_up = 8
+
     

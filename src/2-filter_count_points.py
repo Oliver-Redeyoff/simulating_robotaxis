@@ -1,5 +1,3 @@
-# Import relevant libraries
-
 from typing import List, Tuple
 import math
 
@@ -61,8 +59,8 @@ def min_dist_to_lane(lane_: lane, count_point_: count_point) -> float:
 def run():
 
     # Load count_points and edges
-    edges: List[edge] = retrieve('./temp/edges.pkl')
-    count_points: List[count_point] = retrieve('./temp/count_points.pkl')
+    edges: List[edge] = retrieve('../temp/edges.pkl')
+    count_points: List[count_point] = retrieve('../temp/count_points.pkl')
 
     # find closest lane for each count_point
     for count_point_ in tqdm(count_points, desc='Filtering count points'):
@@ -85,7 +83,7 @@ def run():
 
     # m
 
-    store(count_points, './temp/filtered_count_points.pkl')
+    store(count_points, '../temp/filtered_count_points.pkl')
 
 if __name__ == '__main__':
     run()
