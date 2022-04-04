@@ -71,7 +71,7 @@ def generate_trips_file(trips: List[trip], drivable_edges: List[str], simulation
     indent(taxi_routes_root)
     taxi_routes_tree.write('../temp/' + simulation_.taxi_routes_file, encoding="utf-8", xml_declaration=True)
 
-def dispatch_to_reservation(reservation, idle_taxi_ids):
+def get_available_taxi(reservation, idle_taxi_ids):
     for taxi_id in idle_taxi_ids:
         taxi_edge_id = traci.vehicle.getRoadID(taxi_id)
         pickup_edge_id = reservation.fromEdge
@@ -79,11 +79,10 @@ def dispatch_to_reservation(reservation, idle_taxi_ids):
         route = traci.simulation.findRoute(taxi_edge_id, pickup_edge_id, vType='taxi')
         
         if (route.length != 0):
-            print('dispatched taxi {} on edge {} for reservation {} on edge {}'.format(taxi_id, taxi_edge_id, reservation.id, pickup_edge_id))
-            dropoff_route = traci.simulation.findRoute(reservation.fromEdge, reservation.toEdge, vType='taxi')
-            if (dropoff_route.length == 0):
-                print('there is no way to get to the dropoff though!!')
-            traci.vehicle.dispatchTaxi(taxi_id, reservation.id)
+            # print('dispatched taxi {} on edge {} for reservation {} on edge {}'.format(taxi_id, taxi_edge_id, reservation.id, pickup_edge_id))
+            # dropoff_route = traci.simulation.findRoute(reservation.fromEdge, reservation.toEdge, vType='taxi')
+            # if (dropoff_route.length == 0):
+            #     print('there is no way to get to the dropoff though!!')
             return taxi_id
         break
     return None
@@ -94,7 +93,12 @@ if __name__ == "__main__":
     drivable_edges = retrieve('../temp/drivable_edges.pkl')
     simulation_: simulation = retrieve('../temp/simulation.pkl')
 
-    generate_trips_file(trips, drivable_edges, simulation_, 100)
+    taxi_count = 100
+    taxi_pickups = {}
+    generate_trips_file(trips, drivable_edges, simulation_, taxi_count)
+    for taxi_id in range (taxi_count):
+        taxi_pickups['v'+str(taxi_id)] = []
+    reservations_queue = []
 
     create_dir('../out')
     generate_config(simulation_.net_file, simulation_.taxi_routes_file, simulation_.start_time, simulation_.end_time, '../temp/taxi.sumocfg')
@@ -108,23 +112,32 @@ if __name__ == "__main__":
     # Loop for orchestrating taxis
     total_reservations = 0
     total_dispatches = 0
-    for _ in tqdm(range(simulation_.start_time, simulation_.end_time)):
+    for _ in range(simulation_.start_time, simulation_.end_time):
 
         # Move to next simulation step
         traci.simulationStep()
         # print(traci.simulation.getTime())
-        if (traci.simulation.getTime()%1000 == 0):
+        if (traci.simulation.getTime()%100 == 0):
             print("Total reservations: {} and total dispatches: {}".format(total_reservations, total_dispatches))
             print(len(list(traci.vehicle.getTaxiFleet(taxi_states.any_state.value))))
 
         # Get list of idle taxis and reservations
         idle_taxi_ids = list(traci.vehicle.getTaxiFleet(taxi_states.empty.value))
         new_reservations = list(traci.person.getTaxiReservations(reservation_states.new.value))
+        reservations_queue.extend(new_reservations)
         total_reservations += len(new_reservations)
 
-        for reservation in new_reservations:
-            dispatched_taxi_id = dispatch_to_reservation(reservation, idle_taxi_ids)
-            if (dispatched_taxi_id != None):
-                idle_taxi_ids.remove(dispatched_taxi_id)
+        for reservation in reservations_queue:
+            taxi_id = get_available_taxi(reservation, idle_taxi_ids)
+            if (taxi_id != None):
+                reservations_queue.remove(reservation)
+                idle_taxi_ids.remove(taxi_id)
+                taxi_pickups[taxi_id] = []
+                taxi_pickups[taxi_id].append(reservation.id)
+                taxi_pickups[taxi_id].append(reservation.id)
+                print('dispatched taxi {} for reservation {}'.format(taxi_id, reservation.id))
+                print(taxi_pickups[taxi_id])
+                traci.vehicle.dispatchTaxi(taxi_id, taxi_pickups[taxi_id])
                 total_dispatches += 1
-        
+    
+    traci.close()

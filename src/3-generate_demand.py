@@ -175,7 +175,7 @@ def run():
     store(trips, '../temp/trips.pkl')
     store(simulation_, '../temp/simulation.pkl')
 
-    traci.stop()
+    traci.close()
         
 
 if __name__ == '__main__':
