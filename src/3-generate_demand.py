@@ -10,13 +10,15 @@ import xml.etree.ElementTree as ET
 from tqdm import tqdm
 
 from datatypes import edge, simulation, trip, commuter
-from utilities import retrieve, store
+from utilities import retrieve, store, generate_config
 
 # we need to import python modules from the $SUMO_HOME/tools directory
 if 'SUMO_HOME' in os.environ:
     tools = os.path.join(os.environ['SUMO_HOME'], 'tools')
     sys.path.append(tools)
-    from sumolib.net import readNet
+    # from sumolib.net import readNet
+    from sumolib import checkBinary
+    import traci
 else:
     sys.exit("please declare environment variable 'SUMO_HOME'")
 
@@ -45,13 +47,7 @@ def run():
     edges = retrieve('../temp/edges.pkl')
     drivable_edges = retrieve('../temp/drivable_edges.pkl')
 
-    net = readNet('../temp/target.net.xml', withInternal=True)
-
-
-    ############################################################
-    # Calculate traffic distribution based on count point data #
-    ############################################################
-
+    # net = readNet('../temp/target.net.xml', withInternal=True)
     simulation_ = simulation(
         23, 
         0,
@@ -60,6 +56,15 @@ def run():
         'target.net.xml',
         'base.routes.xml',
         'taxi.routes.xml')
+    generate_config(simulation_.net_file, simulation_.taxi_routes_file, simulation_.start_time, simulation_.end_time, '../temp/temp.sumocfg', True)
+    sumoBinary = checkBinary('sumo')
+    traci.start([sumoBinary, "-c", '../temp/temp.sumocfg'])
+    traci.simulationStep()
+
+
+    ############################################################
+    # Calculate traffic distribution based on count point data #
+    ############################################################
 
     aggregated_counts = [{'sum': 0, 'count': 0, 'average': 0, 'distribution_value': 0} for i in range(1, 23)];
 
@@ -110,12 +115,14 @@ def run():
             start_edge = get_random_drivable_edge(tazs, edges, drivable_edges)
             end_edge = get_random_drivable_edge(tazs, edges, drivable_edges)
 
-            start_sumo_edge = net.getEdge(start_edge.id)
-            end_sumo_edge = net.getEdge(end_edge.id)
+            # start_sumo_edge = net.getEdge(start_edge.id)
+            # end_sumo_edge = net.getEdge(end_edge.id)
 
-            shortestPath = net.getShortestPath(start_sumo_edge, end_sumo_edge, vClass="taxi")
-            
-            if (shortestPath[0] != None):
+            # shortestPath = net.getShortestPath(start_sumo_edge, end_sumo_edge, vClass="taxi")
+            route_1 = traci.simulation.findRoute(start_edge.id, end_edge.id, vType='taxi')
+            route_2 = traci.simulation.findRoute(end_edge.id, start_edge.id, vType='taxi')
+
+            if (route_1.length != 0 and route_2.length != 0):
                 route_is_possible = True
                 commuter_.home_edge = start_edge
                 commuter_.destination_edge = end_edge
@@ -167,6 +174,8 @@ def run():
     ######################################
     store(trips, '../temp/trips.pkl')
     store(simulation_, '../temp/simulation.pkl')
+
+    traci.stop()
         
 
 if __name__ == '__main__':

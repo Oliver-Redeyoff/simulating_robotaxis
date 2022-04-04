@@ -1,10 +1,11 @@
 from __future__ import absolute_import
 from __future__ import print_function
+from functools import total_ordering
 
 import os
 import sys
 import time
-from typing import List, Tuple
+from typing import List
 from tqdm import tqdm
 import random
 import xml.etree.ElementTree as ET
@@ -16,10 +17,10 @@ from utilities import create_dir, retrieve, indent, generate_config
 if 'SUMO_HOME' in os.environ:
     tools = os.path.join(os.environ['SUMO_HOME'], 'tools')
     sys.path.append(tools)
+    from sumolib import checkBinary
+    import traci
 else:
     sys.exit("please declare environment variable 'SUMO_HOME'")
-from sumolib import checkBinary
-import traci
 
 
 def generate_trips_file(trips: List[trip], drivable_edges: List[str], simulation_: simulation, taxi_count: int):
@@ -68,50 +69,62 @@ def generate_trips_file(trips: List[trip], drivable_edges: List[str], simulation
 
     taxi_routes_tree = ET.ElementTree(taxi_routes_root)
     indent(taxi_routes_root)
-    taxi_routes_tree.write('./temp/'+simulation_.taxi_routes_file, encoding="utf-8", xml_declaration=True)
+    taxi_routes_tree.write('../temp/' + simulation_.taxi_routes_file, encoding="utf-8", xml_declaration=True)
+
+def dispatch_to_reservation(reservation, idle_taxi_ids):
+    for taxi_id in idle_taxi_ids:
+        taxi_edge_id = traci.vehicle.getRoadID(taxi_id)
+        pickup_edge_id = reservation.fromEdge
+
+        route = traci.simulation.findRoute(taxi_edge_id, pickup_edge_id, vType='taxi')
+        
+        if (route.length != 0):
+            print('dispatched taxi {} on edge {} for reservation {} on edge {}'.format(taxi_id, taxi_edge_id, reservation.id, pickup_edge_id))
+            dropoff_route = traci.simulation.findRoute(reservation.fromEdge, reservation.toEdge, vType='taxi')
+            if (dropoff_route.length == 0):
+                print('there is no way to get to the dropoff though!!')
+            traci.vehicle.dispatchTaxi(taxi_id, reservation.id)
+            return taxi_id
+        break
+    return None
 
 if __name__ == "__main__":
 
-    trips: List[trip] = retrieve('./temp/trips.pkl')
-    drivable_edges = retrieve('./temp/drivable_edges.pkl')
-    simulation_: simulation = retrieve('./temp/simulation.pkl')
+    trips: List[trip] = retrieve('../temp/trips.pkl')
+    drivable_edges = retrieve('../temp/drivable_edges.pkl')
+    simulation_: simulation = retrieve('../temp/simulation.pkl')
 
     generate_trips_file(trips, drivable_edges, simulation_, 100)
 
-    create_dir('./out')
-    generate_config(simulation_.net_file, simulation_.taxi_routes_file, simulation_.start_time, simulation_.end_time, './temp/taxi.sumocfg')
+    create_dir('../out')
+    generate_config(simulation_.net_file, simulation_.taxi_routes_file, simulation_.start_time, simulation_.end_time, '../temp/taxi.sumocfg')
     sumoBinary = checkBinary('sumo')
-    traci.start([sumoBinary, "-c", './temp/taxi.sumocfg'])
+    traci.start([sumoBinary, "-c", '../temp/taxi.sumocfg'])
 
     # print("Adding taxis")
     # for taxi_id in range(taxi_count):
     #     traci.vehicle.add(f'taxi{taxi_id}', 'route_'+str(taxi_id), 'taxi', depart=str(simulation_.start_time), line='taxi')
 
     # Loop for orchestrating taxis
-    while True:
+    total_reservations = 0
+    total_dispatches = 0
+    for _ in tqdm(range(simulation_.start_time, simulation_.end_time)):
 
         # Move to next simulation step
         traci.simulationStep()
+        # print(traci.simulation.getTime())
+        if (traci.simulation.getTime()%1000 == 0):
+            print("Total reservations: {} and total dispatches: {}".format(total_reservations, total_dispatches))
+            print(len(list(traci.vehicle.getTaxiFleet(taxi_states.any_state.value))))
 
         # Get list of idle taxis and reservations
-        # print(taxi_states.empty)
-        idle_taxi_ids = traci.vehicle.getTaxiFleet(taxi_states.empty.value)
-        new_reservations = traci.person.getTaxiReservations(reservation_states.new.value)
+        idle_taxi_ids = list(traci.vehicle.getTaxiFleet(taxi_states.empty.value))
+        new_reservations = list(traci.person.getTaxiReservations(reservation_states.new.value))
+        total_reservations += len(new_reservations)
 
         for reservation in new_reservations:
-            for taxi_id in idle_taxi_ids:
-                taxi_edge_id = traci.vehicle.getRoadID(taxi_id)
-                pickup_edge_id = reservation.fromEdge
-
-                # taxi_sumo_edge = net.getEdge(taxi_edge_id)
-                # pickup_sumo_edge = net.getEdge(pickup_edge_id)
-
-                route = traci.simulation.findRoute(taxi_edge_id, pickup_edge_id, vType='taxi')
-                if (route.length != 0):
-                    print('dispatched taxi {} on edge {} for reservation {} on edge {}'.format(taxi_id, taxi_edge_id, reservation.id, pickup_edge_id))
-                    traci.vehicle.dispatchTaxi(taxi_id, reservation.id)
-        # if (len(fleet) and len(reservations) > 0):
-        #     print('Taxi {} is on edge {}'.format(fleet[0], traci.vehicle.getRoadID(fleet[0])))
-        #     traci.vehicle.dispatchTaxi(fleet[0], reservations[0].id)
-        #     print('dispatched taxi {} for reservation {}'.format(fleet[0], reservations[0].id))
-        #     time.sleep(1)
+            dispatched_taxi_id = dispatch_to_reservation(reservation, idle_taxi_ids)
+            if (dispatched_taxi_id != None):
+                idle_taxi_ids.remove(dispatched_taxi_id)
+                total_dispatches += 1
+        

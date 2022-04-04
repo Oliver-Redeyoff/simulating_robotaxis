@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+import sys
 import os
 import pickle
 import xml.etree.ElementTree as ET
@@ -44,7 +46,7 @@ def indent(elem, level=0):
         if level and (not elem.tail or not elem.tail.strip()):
             elem.tail = i
 
-def generate_config(net_file: str, route_file: str, start_time: int, end_time: int, output_file: str):
+def generate_config(net_file: str, route_file: str, start_time: int, end_time: int, output_file: str, no_output=False):
     config_root = ET.Element("configuration")
 
     input_config = ET.SubElement(config_root, 'input')
@@ -60,6 +62,9 @@ def generate_config(net_file: str, route_file: str, start_time: int, end_time: i
     ET.SubElement(routing_config, 'routing-algorithm ', {'value': 'astar'})
     ET.SubElement(routing_config, 'persontrip.transfer.taxi-walk', {'value': 'allJunctions'})
     ET.SubElement(routing_config, 'persontrip.transfer.walk-taxi', {'value': 'allJunctions'})
+    if (no_output):
+        report_config = ET.SubElement(config_root, 'report')
+        ET.SubElement(report_config, 'no-warnings', {'value': 'true'})
     taxi_config = ET.SubElement(config_root, 'taxi-device')
     ET.SubElement(taxi_config, 'device.taxi.dispatch-algorithm', {'value': 'traci'})
     ET.SubElement(taxi_config, 'device.taxi.idle-algorithm', {'value': 'randomCircling'})
