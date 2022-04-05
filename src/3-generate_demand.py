@@ -1,5 +1,3 @@
-# Import relevant libraries
-
 from typing import List
 import math
 import random
@@ -112,13 +110,14 @@ def run():
     for commuter_ in tqdm(commuters, desc='Generating commuters'):
         route_is_possible = False
         while not route_is_possible:
+
+            # Retrieve two random distinct edges
             start_edge = get_random_drivable_edge(tazs, edges, drivable_edges)
             end_edge = get_random_drivable_edge(tazs, edges, drivable_edges)
+            if (start_edge == end_edge):
+                continue
 
-            # start_sumo_edge = net.getEdge(start_edge.id)
-            # end_sumo_edge = net.getEdge(end_edge.id)
-
-            # shortestPath = net.getShortestPath(start_sumo_edge, end_sumo_edge, vClass="taxi")
+            # Check that it is possible to travel to each point from the other
             route_1 = traci.simulation.findRoute(start_edge.id, end_edge.id, vType='taxi')
             route_2 = traci.simulation.findRoute(end_edge.id, start_edge.id, vType='taxi')
 

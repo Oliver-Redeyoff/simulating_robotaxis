@@ -48,7 +48,7 @@ def run():
                     '--configuration-file', '../temp/base.sumocfg',
                     # '--emission-output', './out/target.emissions.xml',
                     # '--statistic-output', './out/target.stats.xml',
-                    '--tripinfo-output', '../out/base_target.tripinfo.xml']
+                    '--tripinfo-output', '../out/base.tripinfo.xml']
     subprocess.check_call(sumo_options)
 
 if __name__ == '__main__':

@@ -12,11 +12,14 @@ class lane:
     allow: List[str]
     disallow: List[str]
 
-@dataclass
+@dataclass(eq=False)
 class edge:
     id: str
     is_drivable: bool
     lanes: List[lane]
+
+    def __eq__(self, other):
+        return self.id == other.id
 
 @dataclass
 class count():

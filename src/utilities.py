@@ -68,7 +68,7 @@ def generate_config(net_file: str, route_file: str, start_time: int, end_time: i
     taxi_config = ET.SubElement(config_root, 'taxi-device')
     ET.SubElement(taxi_config, 'device.taxi.dispatch-algorithm', {'value': 'traci'})
     ET.SubElement(taxi_config, 'device.taxi.idle-algorithm', {'value': 'randomCircling'})
-    ET.SubElement(taxi_config, 'device.taxi.dispatch-algorithm.output', {'value': '../out/taxi_dispatch.xml'})
+    # ET.SubElement(taxi_config, 'device.taxi.dispatch-algorithm.output', {'value': '../out/taxi_dispatch.xml'})
 
     config_tree = ET.ElementTree(config_root)
     indent(config_root)
