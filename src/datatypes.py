@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Tuple
 from enum import Enum
 
@@ -73,6 +73,26 @@ class commuter:
     trip1: trip
     trip2: trip
 
+@dataclass
+class Taxi:
+    id: str
+    unreachable_reservations_count: int = 0
+    pickup: List[str] = field(default_factory=list)
+
+@dataclass
+class TaxiGroupBuffer:
+    state: int
+    taxis: List[Taxi]
+    last_checked: float
+
+@dataclass
+class TripInfo:
+    trip_id: str
+    taxi_id: str
+    waiting_time: float
+    duration: float
+    length: float
+
 class p(Enum):
     count_point_id = 0
     direction_of_travel = 1
@@ -109,7 +129,7 @@ class p(Enum):
 
 class taxi_states(Enum):
     any_state = -1      # all taxis
-    empty = 0           # taxi is waiting
+    idle = 0            # taxi is waiting
     pickup = 1          # taxi is en-route to pick a customer up
     occupied = 2        # taxi has a customer
     pickup_occupied = 3 # taxi has a customer but will pickup more customers

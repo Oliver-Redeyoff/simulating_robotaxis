@@ -8,7 +8,7 @@ import xml.etree.ElementTree as ET
 from tqdm import tqdm
 
 from datatypes import edge, simulation, trip, commuter
-from utilities import retrieve, store, generate_config
+from utilities import retrieve, store, generate_config, indent
 
 # we need to import python modules from the $SUMO_HOME/tools directory
 if 'SUMO_HOME' in os.environ:
@@ -20,6 +20,24 @@ if 'SUMO_HOME' in os.environ:
 else:
     sys.exit("please declare environment variable 'SUMO_HOME'")
 
+
+def generate_temp_route_file():
+    temp_routes_root = ET.Element('routes')
+
+    taxi_def = ET.SubElement(temp_routes_root, 'vType', {
+        'id': 'taxi',
+        'vClass': 'taxi',
+        'personCapacity': '8'
+    })
+    ET.SubElement(taxi_def, 'param', {
+        'key': 'has.taxi.device',
+        'value': 'true'
+    })
+
+    temp_trips_tree = ET.ElementTree(temp_routes_root)
+    indent(temp_routes_root)
+    temp_trips_tree.write('../temp/temp.routes.xml', encoding='utf-8', xml_declaration=True)
+    return '../temp/temp.routes.xml'
 
 def get_random_drivable_edge(tazs, edges, drivable_edges) -> edge:
     if (random.random() <= 0.5):
@@ -45,7 +63,6 @@ def run():
     edges = retrieve('../temp/edges.pkl')
     drivable_edges = retrieve('../temp/drivable_edges.pkl')
 
-    # net = readNet('../temp/target.net.xml', withInternal=True)
     simulation_ = simulation(
         23, 
         0,
@@ -54,7 +71,8 @@ def run():
         'target.net.xml',
         'base.routes.xml',
         'taxi.routes.xml')
-    generate_config(simulation_.net_file, simulation_.taxi_routes_file, simulation_.start_time, simulation_.end_time, '../temp/temp.sumocfg', True)
+
+    generate_config(simulation_.net_file, generate_temp_route_file(), simulation_.start_time, simulation_.end_time, '../temp/temp.sumocfg', True)
     sumoBinary = checkBinary('sumo')
     traci.start([sumoBinary, "-c", '../temp/temp.sumocfg'])
     traci.simulationStep()

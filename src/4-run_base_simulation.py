@@ -46,8 +46,6 @@ def run():
     generate_config(simulation_.net_file, simulation_.base_routes_file, simulation_.start_time, simulation_.end_time, '../temp/base.sumocfg')
     sumo_options = ['sumo',
                     '--configuration-file', '../temp/base.sumocfg',
-                    # '--emission-output', './out/target.emissions.xml',
-                    # '--statistic-output', './out/target.stats.xml',
                     '--tripinfo-output', '../out/base.tripinfo.xml']
     subprocess.check_call(sumo_options)
 
