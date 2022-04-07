@@ -80,12 +80,6 @@ class Taxi:
     pickup: List[str] = field(default_factory=list)
 
 @dataclass
-class TaxiGroupBuffer:
-    state: int
-    taxis: List[Taxi]
-    last_checked: float
-
-@dataclass
 class TripInfo:
     trip_id: str
     taxi_id: str
