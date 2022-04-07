@@ -1,27 +1,26 @@
 from typing import List, Tuple
 import math
+import xml.etree.ElementTree as ET
 
 import folium
-import xml.etree.ElementTree as ET
-import utm
 from tqdm import tqdm
 
 from utilities import retrieve, store
-from datatypes import lane, edge, count_point
+from datatypes import Lane, Edge, CountPoint
     
 
 # Get distance from count_point to to lane
-def min_dist_to_lane(lane_: lane, count_point_: count_point) -> float:
+def min_dist_to_lane(lane: Lane, count_point: CountPoint) -> float:
 
     min_dist = -1;
 
-    for i in range(1, len(lane_.shape)):
-        x = count_point_.utm[0];
-        y = count_point_.utm[1];
-        x1 = lane_.shape[i-1][0];
-        y1 = lane_.shape[i-1][1];
-        x2 = lane_.shape[i][0];
-        y2 = lane_.shape[i][1];
+    for i in range(1, len(lane.shape)):
+        x = count_point.utm[0];
+        y = count_point.utm[1];
+        x1 = lane.shape[i-1][0];
+        y1 = lane.shape[i-1][1];
+        x2 = lane.shape[i][0];
+        y2 = lane.shape[i][1];
 
         A = x - x1;
         B = y - y1;
@@ -59,23 +58,23 @@ def min_dist_to_lane(lane_: lane, count_point_: count_point) -> float:
 def run():
 
     # Load count_points and edges
-    edges: List[edge] = retrieve('../temp/edges.pkl')
-    count_points: List[count_point] = retrieve('../temp/count_points.pkl')
+    edges: List[Edge] = retrieve('../temp/edges.pkl')
+    count_points: List[CountPoint] = retrieve('../temp/count_points.pkl')
 
     # find closest lane for each count_point
-    for count_point_ in tqdm(count_points, desc='Filtering count points'):
-        closest_lane: Tuple[float, lane] = (-1, None)
+    for count_point in tqdm(count_points, desc='Filtering count points'):
+        closest_lane: Tuple[float, Lane] = (-1, None)
         
-        for edge_ in edges:
-            for lane_ in edge_.lanes:
-                dist = min_dist_to_lane(lane_, count_point_)
+        for edge in edges:
+            for lane in edge.lanes:
+                dist = min_dist_to_lane(lane, count_point)
                 if (closest_lane[0] == -1 or dist<closest_lane[0]):
-                    closest_lane = (dist, lane_)
+                    closest_lane = (dist, lane)
         
-        count_point_.closest_lane = closest_lane
+        count_point.closest_lane = closest_lane
 
     # filter out count points which are more that 10 metres away from the closest lane
-    count_points = [count_point_ for count_point_ in count_points if count_point_.closest_lane[0]<10]
+    count_points = [count_point for count_point in count_points if count_point.closest_lane[0]<10]
 
     # place markers for each counting point on map
     # for count_point_ in count_points:

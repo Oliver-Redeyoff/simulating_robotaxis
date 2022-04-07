@@ -3,12 +3,12 @@ import csv
 import os
 import sys
 import subprocess
-
 import xml.etree.ElementTree as ET
+
 from tqdm import tqdm
 
+from datatypes import Lane, Edge, Taz
 from utilities import store
-from datatypes import lane, edge, taz
 
 if 'SUMO_HOME' in os.environ:
     sys.path.append(os.path.join(os.environ['SUMO_HOME'], 'tools/contributed/saga'))
@@ -27,9 +27,7 @@ def normalise_shape(shape_str, origin):
 
 def run():
 
-    #########################
-    # Generate sumo network #
-    #########################
+    # Generate sumo network
     netconvert_options = ['netconvert',
                         '--osm', '../temp/target_bbox.osm.xml',
                         '--o', '../temp/target.net.xml',
@@ -45,21 +43,7 @@ def run():
                         '--remove-edges.isolated', 'true']
     subprocess.check_call(netconvert_options)
 
-    #############################################################
-    # Generate sumo network and deduce TAZs using the saga tool #
-    #############################################################
-    # saga_options = ['--osm', './temp/target_bbox.osm.xml',
-    #             '--out', './temp_saga',
-    #             '--from-step', str(0),
-    #             '--to-step', str(7),
-    #             '--lefthand']
-                
-    # scenarioFromOSM.main(saga_options)
-
-    # os.chdir('..')
-
-    # shutil.copyfile('./temp_saga/osm.net.xml', './temp/target.net.xml')
-
+    # Deduce TAZs using the saga tool
     saga_options = ['--osm', '../temp/target_bbox.osm.xml',
                 '--net', '../temp/target.net.xml',
                 '--taz-output', '../temp/osm_taz.xml',
@@ -67,33 +51,31 @@ def run():
                 '--poly-output', '../temp/poly.xml']
     generateTAZBuildingsFromOSM.main(saga_options)
     
-    ############################################
-    # Extract all edges and their UTM position #
-    ############################################
+    # Extract all edges and their UTM position
     net_tree = ET.parse('../temp/target.net.xml')
     net_root = net_tree.getroot()
 
-    # get origin UTM position
+    # Get origin UTM position
     temp1 = net_root[0].attrib['projParameter'].split(' ')
     utm_zone = int(temp1[1].split('=')[1])
 
     origin = net_root[0].attrib['netOffset'].split(',')
     origin = [-1*float(coord) for coord in origin]
 
-    edges: List[edge] = []
+    edges: List[Edge] = []
 
     for edge_element in tqdm(net_root.findall('edge'), desc='Extracting lanes from network'):
 
-        # instantiate new edge
-        new_edge = edge(
+        # Instantiate new edge
+        new_edge = Edge(
             edge_element.attrib['id'],
             False,
             []
         )
 
-        # instantiate all new lanes
+        # Instantiate all new lanes
         for lane_element in edge_element.findall('lane'):
-            new_lane = lane(
+            new_lane = Lane(
                 lane_element.attrib['id'],
                 float(lane_element.attrib['speed']),
                 normalise_shape(lane_element.attrib['shape'], origin),
@@ -109,24 +91,21 @@ def run():
         edges.append(new_edge)
 
 
-    ###################################
-    # Retrieve tazs and their weights #
-    ###################################
-    tazs: List[taz] = []
+    # Retrieve tazs and their weights
+    tazs: List[Taz] = []
 
     taz_tree = ET.parse('../temp/osm_taz.xml')
     taz_root = taz_tree.getroot()
-    taz_total_weight = 0
 
     drivable_edges = set([edge_.id for edge_ in edges if edge_.is_drivable])
 
-    # instantiate tazs
-    for taz_ in tqdm(taz_root, desc='Generating tazs'):
-        tazs.append(taz(
-            taz_.attrib['id'],
+    # Instantiate tazs
+    for taz in tqdm(taz_root, desc='Generating tazs'):
+        tazs.append(Taz(
+            taz.attrib['id'],
             '',
-            taz_.attrib['edges'].split(' '),
-            list(drivable_edges.intersection(set(taz_.attrib['edges'].split(' ')))),
+            taz.attrib['edges'].split(' '),
+            list(drivable_edges.intersection(set(taz.attrib['edges'].split(' ')))),
             0,
             0,
             0
@@ -134,28 +113,23 @@ def run():
 
     with open('../temp/osm_taz_weight.csv', mode='r') as csv_taz_weights:
         csv_reader = csv.DictReader(csv_taz_weights)
-        line_count = 0
         for row in csv_reader:
-            taz_ = next(taz_ for taz_ in tazs if taz_.id == row['TAZ'])
-            taz_.name = row['Name']
-            taz_.node_count = int(row['#Nodes'])
-            taz_.area = float(row['Area'])
+            taz = next(taz for taz in tazs if taz.id == row['TAZ'])
+            taz.name = row['Name']
+            taz.node_count = int(row['#Nodes'])
+            taz.area = float(row['Area'])
 
-    # filter out taz which don't have any drivable edges
-    tazs = [taz_ for taz_ in tazs if len(taz_.drivable_edges)>0]
+    # Filter out taz which don't have any drivable edges
+    tazs = [taz for taz in tazs if len(taz.drivable_edges)>0]
 
-    taz_total_node_count = sum(taz_.node_count for taz_ in tazs)
-    for taz_ in tazs:
-        taz_.weight = taz_.node_count/taz_total_node_count
+    taz_total_node_count = sum(taz.node_count for taz in tazs)
+    for taz in tazs:
+        taz.weight = taz.node_count/taz_total_node_count
 
-    ###############################
-    # Write taz data data to file #
-    ###############################
+    # Write taz data data to file
     store(tazs, '../temp/tazs.pkl')
 
-    ###############################################
-    # Write edges and drivable edges data to file #
-    ###############################################
+    # Write edges and drivable edges data to file
     store(edges, '../temp/edges.pkl')
     store(drivable_edges, '../temp/drivable_edges.pkl')
             

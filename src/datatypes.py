@@ -5,7 +5,7 @@ from enum import Enum
 Coord = Tuple[float, float]
 
 @dataclass
-class lane:
+class Lane:
     id: str
     speed: float
     shape: List[Coord]
@@ -13,32 +13,32 @@ class lane:
     disallow: List[str]
 
 @dataclass(eq=False)
-class edge:
+class Edge:
     id: str
     is_drivable: bool
-    lanes: List[lane]
+    lanes: List[Lane]
 
     def __eq__(self, other):
         return self.id == other.id
 
 @dataclass
-class count():
+class Count():
     hour: int
     value_sum: int
     value_count: int
 
 @dataclass
-class count_point():
+class CountPoint():
     id: str
     road_name: str
     latitude: float
     longitude: float
     utm: any
-    counts: List[count]
-    closest_lane: Tuple[float, lane]
+    counts: List[Count]
+    closest_lane: Tuple[float, Lane]
 
 @dataclass
-class taz:
+class Taz:
     id: str
     name: str
     edges: List[str]
@@ -48,7 +48,7 @@ class taz:
     area: float
 
 @dataclass
-class simulation:
+class Simulation:
     start_hour: int
     start_time: float
     end_hour: int
@@ -58,7 +58,7 @@ class simulation:
     taxi_routes_file: str
 
 @dataclass
-class trip:
+class Trip:
     id: int
     depart: float
     from_: str
@@ -67,11 +67,11 @@ class trip:
          return self.depart < other.depart
 
 @dataclass
-class commuter:
-    home_edge: edge
-    destination_edge: edge
-    trip1: trip
-    trip2: trip
+class Commuter:
+    home_edge: Edge
+    destination_edge: Edge
+    trip1: Trip
+    trip2: Trip
 
 @dataclass
 class Taxi:
@@ -87,7 +87,7 @@ class TripInfo:
     duration: float
     length: float
 
-class p(Enum):
+class P(Enum):
     count_point_id = 0
     direction_of_travel = 1
     year = 2
@@ -121,18 +121,18 @@ class p(Enum):
     all_hgvs = 30
     all_motor_vehicles = 31
 
-class taxi_states(Enum):
+class TaxiStates(Enum):
     any_state = -1      # all taxis
     idle = 0            # taxi is waiting
     pickup = 1          # taxi is en-route to pick a customer up
     occupied = 2        # taxi has a customer
     pickup_occupied = 3 # taxi has a customer but will pickup more customers
 
-class reservation_states(Enum):
-    any_state = 0
-    new = 1
-    old = 2
-    assigned = 4
-    picked_up = 8
+class ReservationStates(Enum):
+    any_state = 0   # all reservations
+    new = 1         # reservations that are new
+    old = 2         # reservations that have already been retrieved
+    assigned = 4    # reservations that are assigned to a taxi
+    picked_up = 8   # reservations that have been picked up by a taxi
 
     

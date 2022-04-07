@@ -1,21 +1,21 @@
 from typing import List
 import subprocess
-
 import xml.etree.ElementTree as ET
+
 from tqdm import tqdm
 
-from datatypes import trip, simulation
+from datatypes import Trip, Simulation
 from utilities import create_dir, retrieve, indent, generate_config
 
-def generate_trips_file(trips: List[trip]):
+def generate_trips_file(trips: List[Trip]):
     base_trips_root = ET.Element('routes')
 
-    for trip_ in tqdm(trips, desc='Generating base.trips.xml'):
+    for trip in tqdm(trips, desc='Generating base.trips.xml'):
         ET.SubElement(base_trips_root, 'trip', {
-                'id': str(trip_.id), 
-                'depart': str(trip_.depart),
-                'from': trip_.from_,
-                'to': trip_.to
+                'id': str(trip.id), 
+                'depart': str(trip.depart),
+                'from': trip.from_,
+                'to': trip.to
             })
 
     base_trips_tree = ET.ElementTree(base_trips_root)
@@ -27,14 +27,14 @@ def generate_trips_file(trips: List[trip]):
 def run():
 
     # Retrieve list of trips
-    trips: List[trip] = retrieve('../temp/trips.pkl')
-    simulation_: simulation = retrieve('../temp/simulation.pkl')
+    trips: List[Trip] = retrieve('../temp/trips.pkl')
+    simulation: Simulation = retrieve('../temp/simulation.pkl')
 
     # Generate routes from trips using duarouter
     duarouter_options = ['duarouter',
                         '--net-file', '../temp/target.net.xml',
                         '--route-files', generate_trips_file(trips),
-                        '--output-file', '../temp/' + simulation_.base_routes_file,
+                        '--output-file', '../temp/' + simulation.base_routes_file,
                         '--ignore-errors', 'true',
                         '--repair', 'true',
                         '--unsorted-input', 'true',
@@ -43,7 +43,7 @@ def run():
 
     # Run the simulation using the sumo program
     create_dir('../out')
-    generate_config(simulation_.net_file, simulation_.base_routes_file, simulation_.start_time, simulation_.end_time, '../temp/base.sumocfg')
+    generate_config(simulation.net_file, simulation.base_routes_file, simulation.start_time, simulation.end_time, '../temp/base.sumocfg')
     sumo_options = ['sumo',
                     '--configuration-file', '../temp/base.sumocfg',
                     '--tripinfo-output', '../out/base.tripinfo.xml']

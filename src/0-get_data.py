@@ -1,19 +1,17 @@
-# Import relevant libraries
-
 from typing import List
 import csv
 import json
 import requests
 import os
 import sys
+import xml.etree.ElementTree as ET
+from pyproj import Transformer
 
 import folium
-import xml.etree.ElementTree as ET
 import utm
-from pyproj import Transformer
 from shapely.geometry import shape, Point
 
-from datatypes import count, count_point, p
+from datatypes import Count, CountPoint, P
 from utilities import create_dir, store
 
 if 'SUMO_HOME' in os.environ:
@@ -23,18 +21,18 @@ else:
     sys.exit("please declare environment variable 'SUMO_HOME'")
     
 
-def aggregate_counts(count_point_: count_point, raw_count):
+def aggregate_counts(count_point: CountPoint, raw_count):
 
-    for count_ in count_point_.counts:
-        if (count_.hour == int(raw_count[p.hour.value])):
+    for count in count_point.counts:
+        if (count.hour == int(raw_count[P.hour.value])):
             # add count to average
-            count_.value_sum += int(raw_count[p.cars_and_taxis.value])
-            count_.value_count += 1
+            count.value_sum += int(raw_count[P.cars_and_taxis.value])
+            count.value_count += 1
             return
 
-    count_point_.counts.append(count(
-        int(raw_count[p.hour.value]),
-        int(raw_count[p.cars_and_taxis.value]),
+    count_point.counts.append(Count(
+        int(raw_count[P.hour.value]),
+        int(raw_count[P.cars_and_taxis.value]),
         1
     ))
 
@@ -109,20 +107,20 @@ def run():
     raw_counts = [point for point in raw_counts if point[p.year.value]=='2018'];
 
     # now reduce all values to single averages for each time of day
-    count_points: List[count_point] = []
+    count_points: List[CountPoint] = []
 
     # reduce raw counts to average count at each count point
     for raw_count in raw_counts:
 
-        count_point_id = raw_count[p.count_point_id.value];
+        count_point_id = raw_count[P.count_point_id.value];
         
         # need to define count_point if it hasn't been added yet
         if (count_point_id not in [point.id for point in count_points]):
-            new_count_point = count_point(
+            new_count_point = CountPoint(
                 count_point_id,
-                raw_count[p.road_name.value],
-                float(raw_count[p.latitude.value]),
-                float(raw_count[p.longitude.value]),
+                raw_count[P.road_name.value],
+                float(raw_count[P.latitude.value]),
+                float(raw_count[P.longitude.value]),
                 utm.from_latlon(float(raw_count[p.latitude.value]), float(raw_count[p.longitude.value])),
                 [],
                 (-1, None)
@@ -131,9 +129,9 @@ def run():
             count_points.append(new_count_point)
 
         else:
-            for count_point_ in count_points:
-                if (count_point_.id == count_point_id):
-                    aggregate_counts(count_point_, raw_count)
+            for count_point in count_points:
+                if (count_point.id == count_point_id):
+                    aggregate_counts(count_point, raw_count)
 
 
     ##################################

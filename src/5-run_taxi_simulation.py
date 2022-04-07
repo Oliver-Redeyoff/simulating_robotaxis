@@ -3,13 +3,13 @@ from __future__ import print_function
 import os
 import sys
 import math
-from typing import List, Dict, Tuple
-from tqdm import tqdm
-import time
+from typing import List
 import random
 import xml.etree.ElementTree as ET
 
-from datatypes import trip, simulation, taxi_states, reservation_states, Taxi
+from tqdm import tqdm
+
+from datatypes import Trip, Simulation, TaxiStates, ReservationStates, Taxi
 from utilities import create_dir, retrieve, indent, generate_config
 
 # We need to import python modules from the $SUMO_HOME/tools directory
@@ -21,6 +21,7 @@ if 'SUMO_HOME' in os.environ:
 else:
     sys.exit("please declare environment variable 'SUMO_HOME'")
 
+
 # Instantiate global variables
 verbose = False
 drivable_edges = []
@@ -28,7 +29,7 @@ taxis: List[Taxi] = []
 
 
 # Generates the file containing the description of the taxis and the trips
-def generate_trips_file(trips: List[trip], simulation_: simulation):
+def generate_trips_file(trips: List[Trip], simulation: Simulation):
 
     taxi_routes_root = ET.Element("routes")
 
@@ -42,21 +43,21 @@ def generate_trips_file(trips: List[trip], simulation_: simulation):
         'value': 'true'
     })
     
-    for trip_ in tqdm(trips):
+    for trip in tqdm(trips):
         person = ET.SubElement(taxi_routes_root, 'person', {
-            'id': str(trip_.id), 
-            'depart': str(trip_.depart),
+            'id': str(trip.id), 
+            'depart': str(trip.depart),
             'color': 'green'
         })
         ET.SubElement(person, 'ride', {
-            'from': trip_.from_,
-            'to': trip_.to,
+            'from': trip.from_,
+            'to': trip.to,
             'lines': 'taxi'
         })
 
     taxi_routes_tree = ET.ElementTree(taxi_routes_root)
     indent(taxi_routes_root)
-    taxi_routes_tree.write('../temp/' + simulation_.taxi_routes_file, encoding="utf-8", xml_declaration=True)
+    taxi_routes_tree.write('../temp/' + simulation.taxi_routes_file, encoding="utf-8", xml_declaration=True)
 
 
 # Create a new taxi and insert it into the simulation
@@ -91,7 +92,6 @@ def replace_taxi(taxi) -> Taxi:
 # Taxi dispatch method which just sends the first idle taxi available
 def dispatch_taxi_first(reservation, idle_taxis):
 
-    # idle_taxis = get_taxis(taxi_states.idle.value)
     pickup_edge_id = reservation.fromEdge
 
     for taxi in idle_taxis:
@@ -148,16 +148,16 @@ def run():
     # taxis = [Taxi('v'+str(i)) for i in range(taxi_count)]
 
     # Retrieve data
-    trips: List[trip] = retrieve('../temp/trips.pkl')
+    trips: List[Trip] = retrieve('../temp/trips.pkl')
     drivable_edges = retrieve('../temp/drivable_edges.pkl')
-    simulation_: simulation = retrieve('../temp/simulation.pkl')
+    simulation: Simulation = retrieve('../temp/simulation.pkl')
 
     # Generate trips file
-    generate_trips_file(trips, simulation_)
+    generate_trips_file(trips, simulation)
 
     # Generate sumo config file and start simulation
     create_dir('../out')
-    generate_config(simulation_.net_file, simulation_.taxi_routes_file, simulation_.start_time, simulation_.end_time, '../temp/taxi.sumocfg', True)
+    generate_config(simulation.net_file, simulation.taxi_routes_file, simulation.start_time, simulation.end_time, '../temp/taxi.sumocfg', True)
     sumoBinary = checkBinary('sumo')
     traci.start([sumoBinary, 
                 '--configuration-file', '../temp/taxi.sumocfg',
@@ -167,7 +167,6 @@ def run():
     taxi_count = 50
     for taxi in range(taxi_count):
         new_taxi()
-    print('added taxis')
 
     # Orchestrate simulation
     reservations_queue = []
@@ -177,50 +176,48 @@ def run():
     taxi_res_diff = 0
     taxi_res_diff_count = 0
 
-    for _ in tqdm(range(simulation_.start_time, simulation_.end_time)):
+    for _ in tqdm(range(simulation.start_time, simulation.end_time)):
 
         # Move to next simulation step
         traci.simulationStep()
         if (traci.simulation.getTime()%1000 == 0):
             print("Total reservations: {} and total dispatches: {}".format(total_reservations, total_dispatches))
-            print(len(list(traci.vehicle.getTaxiFleet(taxi_states.any_state.value))))
+            print(len(list(traci.vehicle.getTaxiFleet(TaxiStates.any_state.value))))
             print(taxi_res_diff/taxi_res_diff_count)
 
         # Get new reservations
-        new_reservations = list(traci.person.getTaxiReservations(reservation_states.new.value))
+        new_reservations = list(traci.person.getTaxiReservations(ReservationStates.new.value))
         reservations_queue.extend(new_reservations)
         total_reservations += len(new_reservations)
         
         # Get list of idle taxis
-        idle_taxi_ids = traci.vehicle.getTaxiFleet(taxi_states.idle.value)
+        idle_taxi_ids = traci.vehicle.getTaxiFleet(TaxiStates.idle.value)
         idle_taxis = [taxi for taxi in taxis if taxi.id in idle_taxi_ids]
 
         # Balance the number of taxis
         if (traci.simulation.getTime()%120 == 0 and total_reservations > 0):
             average_diff = taxi_res_diff/taxi_res_diff_count
-            # print('difference between number of taxi and reservation : {}'.format(average_diff))
-            print()
-            print('total taxis in fleet : {}'.format(len(list(traci.vehicle.getTaxiFleet(taxi_states.any_state.value)))))
-            # print('total reservations : {}'.format(total_reservations))
+            
+            if (verbose):
+                print('total taxis in fleet : {}'.format(len(list(traci.vehicle.getTaxiFleet(TaxiStates.any_state.value)))))
 
             if (abs(average_diff) > 10):
                 # if diff is negative, remove taxis
                 if (average_diff < 0):
-                    print('removing {} taxis'.format(round(average_diff)))
+                    if (verbose):
+                        print('removing {} taxis'.format(round(average_diff)))
                     for i in range(abs(round(average_diff))):
                         if (len(idle_taxis) > 0):
                             taxi = random.choice(idle_taxis)
                             taxis.remove(taxi)
                             traci.vehicle.remove(taxi.id)
-                            print(taxi in idle_taxis)
                             idle_taxis.remove(taxi)
                 elif (average_diff > 0):
-                    print('adding {} taxis'.format(round(average_diff)))
+                    if (verbose):
+                        print('adding {} taxis'.format(round(average_diff)))
                     for i in range(round(average_diff)):
                         new_taxi()
 
-            # print('new total taxis in fleet : {}'.format(len(list(traci.vehicle.getTaxiFleet(taxi_states.any_state.value)))))
-            print()
             taxi_res_diff = 0
             taxi_res_diff_count = 0
 
@@ -245,6 +242,7 @@ def run():
                     if (verbose):
                         print("couldn't dispatch taxi {} for reservation {} at time {}".format(taxi.id, reservation.id, traci.simulation.getTime()))
 
+        # Update difference between idle taxis and reservation queue
         taxi_res_diff += len(reservations_queue)-len(idle_taxis)
         taxi_res_diff_count += 1
 

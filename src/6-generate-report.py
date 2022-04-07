@@ -1,19 +1,13 @@
 from typing import List
-import math
-import random
-import os
-import sys
-
 import xml.etree.ElementTree as ET
-from tqdm import tqdm
 
-from datatypes import trip, TripInfo
+from datatypes import Trip, TripInfo
 from utilities import retrieve
 
 def run():
 
-    trips: List[trip] = retrieve('../temp/trips.pkl')
-    trip_ids = [str(trip_.id) for trip_ in trips]
+    trips: List[Trip] = retrieve('../temp/trips.pkl')
+    trip_ids = [str(trip.id) for trip in trips]
 
     # Retrive tripinfos for both simulations
     base_info_tree = ET.parse('../out/base.tripinfo.xml')
