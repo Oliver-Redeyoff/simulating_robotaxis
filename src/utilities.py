@@ -1,5 +1,3 @@
-from contextlib import contextmanager
-import sys
 import os
 import pickle
 import xml.etree.ElementTree as ET

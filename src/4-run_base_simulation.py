@@ -43,7 +43,7 @@ def run():
 
     # Run the simulation using the sumo program
     create_dir('../out')
-    generate_config(simulation.net_file, simulation.base_routes_file, simulation.start_time, simulation.end_time, '../temp/base.sumocfg')
+    generate_config(simulation.net_file, simulation.base_routes_file, simulation.start_time, simulation.end_time, '../temp/base.sumocfg', True)
     sumo_options = ['sumo',
                     '--configuration-file', '../temp/base.sumocfg',
                     '--tripinfo-output', '../out/base.tripinfo.xml']

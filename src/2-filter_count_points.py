@@ -61,7 +61,7 @@ def run():
     edges: List[Edge] = retrieve('../temp/edges.pkl')
     count_points: List[CountPoint] = retrieve('../temp/count_points.pkl')
 
-    # find closest lane for each count_point
+    # Find closest lane for each count_point
     for count_point in tqdm(count_points, desc='Filtering count points'):
         closest_lane: Tuple[float, Lane] = (-1, None)
         
@@ -73,10 +73,10 @@ def run():
         
         count_point.closest_lane = closest_lane
 
-    # filter out count points which are more that 10 metres away from the closest lane
+    # Filter out count points which are more that 10 metres away from the closest lane
     count_points = [count_point for count_point in count_points if count_point.closest_lane[0]<10]
 
-    # place markers for each counting point on map
+    # Place markers for each counting point on map
     # for count_point_ in count_points:
     #     folium.Marker([float(count_point_.latitude), float(count_point_.longitude)], popup=count_point_.id, icon=folium.Icon(color="red")).add_to(m)
 

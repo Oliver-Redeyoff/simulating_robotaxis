@@ -38,10 +38,7 @@ def aggregate_counts(count_point: CountPoint, raw_count):
 
 def run():
 
-
-    ##########################################################################
-    # Get name of target, and get it's position using google maps places api #
-    ##########################################################################
+    # Get name of target, and get it's position using google maps places api
     # target_name = input("Enter town name : ")
     target_name = "Bath"
     x = requests.get('https://maps.googleapis.com/maps/api/geocode/json?address=' + target_name + '&key=AIzaSyAhmPLZ2MEGQK1-7rTmyjbN_r6Pnqjr8YM')
@@ -52,9 +49,7 @@ def run():
     m = folium.Map(location=[target_geometry['location']['lat'], target_geometry['location']['lng']])
 
 
-    #################################################
-    # Download osm data using bounding box of place #
-    #################################################
+    # Download osm data using bounding box of place
     create_dir('../temp')
     status = 504
     attempts = 1
@@ -69,9 +64,7 @@ def run():
         attempts += 1
 
 
-    ###################################################
-    # Figure out which local authority the town is in #
-    ###################################################
+    # Figure out which local authority the town is in
     with open('local_authorities.geojson', 'r') as myfile:
         local_authorities_raw = myfile.read()
     local_authorities = json.loads(local_authorities_raw)
@@ -90,9 +83,7 @@ def run():
         print("ERROR: could not find area in any british local authority")
 
 
-    #####################################################
-    # Get count point data for relevant local authority #
-    #####################################################
+    # Get count point data for relevant local authority
     x = requests.get('https://storage.googleapis.com/dft-statistics/road-traffic/downloads/rawcount/local_authority_id/dft_rawcount_local_authority_id_' + str(local_authority_id) + '.csv');
     raw_counts = x.text.split('\n');
     raw_counts = list(csv.reader(raw_counts));
@@ -100,11 +91,9 @@ def run():
     raw_counts.pop(0);
 
 
-    #################################################################################
-    # Reduce each count for a point at a certain time of day into one average value #
-    #################################################################################
+    # Reduce each count for a point at a certain time of day into one average value
     # only include points from 2018
-    raw_counts = [point for point in raw_counts if point[p.year.value]=='2018'];
+    raw_counts = [point for point in raw_counts if point[P.year.value]=='2018'];
 
     # now reduce all values to single averages for each time of day
     count_points: List[CountPoint] = []
@@ -121,7 +110,7 @@ def run():
                 raw_count[P.road_name.value],
                 float(raw_count[P.latitude.value]),
                 float(raw_count[P.longitude.value]),
-                utm.from_latlon(float(raw_count[p.latitude.value]), float(raw_count[p.longitude.value])),
+                utm.from_latlon(float(raw_count[P.latitude.value]), float(raw_count[P.longitude.value])),
                 [],
                 (-1, None)
             )
@@ -134,9 +123,7 @@ def run():
                     aggregate_counts(count_point, raw_count)
 
 
-    ##################################
-    # Write count_point data to file #
-    ##################################
+    # Write count_point data to file
     store(count_points, '../temp/count_points.pkl')
 
 if __name__ == '__main__':
