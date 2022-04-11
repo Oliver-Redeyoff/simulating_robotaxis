@@ -87,6 +87,14 @@ class TripInfo:
     duration: float
     length: float
 
+@dataclass
+class TaxiSimulationLog:
+    time_step: float
+    taxi_count: int
+    reservation_count: int
+    dispatch_count: int
+    average_idle_taxi_count: float
+
 class P(Enum):
     count_point_id = 0
     direction_of_travel = 1

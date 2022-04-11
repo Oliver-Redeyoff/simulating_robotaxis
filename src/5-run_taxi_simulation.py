@@ -3,14 +3,15 @@ from __future__ import print_function
 import os
 import sys
 import math
+import time
 from typing import List
 import random
 import xml.etree.ElementTree as ET
 
 from tqdm import tqdm
 
-from datatypes import Trip, Simulation, TaxiStates, ReservationStates, Taxi
-from utilities import create_dir, retrieve, indent, generate_config
+from datatypes import Trip, Simulation, TaxiStates, ReservationStates, Taxi, TaxiSimulationLog
+from utilities import create_dir, store, retrieve, indent, generate_config
 
 # We need to import python modules from the $SUMO_HOME/tools directory
 if 'SUMO_HOME' in os.environ:
@@ -160,9 +161,10 @@ def run():
     traci.start([sumoBinary, 
                 '--configuration-file', '../temp/taxi.sumocfg',
                 '--tripinfo-output', '../out/taxi.tripinfo.xml'])
+    simulation_log: List[TaxiSimulationLog] = []
 
     # Add taxis to simulation
-    taxi_count = 1000
+    taxi_count = 100
     for taxi in range(taxi_count):
         new_taxi()
 
@@ -170,20 +172,41 @@ def run():
     reservations_queue = []
     total_reservations = 0
     total_dispatches = 0
+    idle_taxi_counts = []
 
-    taxi_res_diffs = []
-
-    idle_taxi_sum = 0
-    idle_taxi_count = 0
+    simulation_step_timings = []
+    dispatch_alg_timings = []
 
     for _ in tqdm(range(simulation.start_time, simulation.end_time)):
 
         # Move to next simulation step
+        tic = time.perf_counter()
         traci.simulationStep()
+        toc = time.perf_counter()
+        simulation_step_timings.append(tic-toc)
+
         if (traci.simulation.getTime()%120 == 0):
+            # Remove taxis from our list that have mysteriously disapeared
+            taxis = [taxi for taxi in taxis if taxi.id in traci.vehicle.getTaxiFleet(TaxiStates.any_state.value)]
+
+            # Store simulation logs
+            simulation_log.append(TaxiSimulationLog(
+                traci.simulation.getTime(),
+                len(taxis),
+                total_reservations,
+                total_dispatches,
+                sum(idle_taxi_counts)/len(idle_taxi_counts)
+            ))
+
             print("Total reservations: {} and total dispatches: {}".format(total_reservations, total_dispatches))
             print("Total taxis: {}".format(len(taxis)))
-            # print(taxi_res_diff/taxi_res_diff_count)
+            print("Average simulation step time: {}".format(sum(simulation_step_timings)/len(simulation_step_timings)))
+            if (len(dispatch_alg_timings) > 0):
+                print("Average dispatch algorithm time: {}".format(sum(dispatch_alg_timings)/len(dispatch_alg_timings)))
+
+            simulation_step_timings = []
+            dispatch_alg_timings = []
+            idle_taxi_counts = []
 
         # Get new reservations
         new_reservations = list(traci.person.getTaxiReservations(ReservationStates.new.value))
@@ -193,44 +216,16 @@ def run():
         # Get list of idle taxis
         idle_taxi_ids = traci.vehicle.getTaxiFleet(TaxiStates.idle.value)
         idle_taxis = [taxi for taxi in taxis if taxi.id in idle_taxi_ids]
-
-        idle_taxi_sum += len(idle_taxis)
-        idle_taxi_count += 1
-
-        # Balance the number of taxis
-        # if (traci.simulation.getTime()%60 == 0 and total_reservations > 0):
-        #     print(taxi_res_diffs)
-        #     average_diff = taxi_res_diffs[-1]
-        #     print('Average difference: {}'.format(average_diff))
-        #     print('Idle taxi average: {}'.format(idle_taxi_sum/idle_taxi_count))
-
-        #     if (abs(average_diff) > 25):
-        #         # If diff is negative, remove taxis
-        #         if (average_diff < 0):
-        #             print('Removing {} taxis'.format(abs(round(average_diff))))
-        #             for i in range(abs(round(average_diff*0.5))):
-        #                 if (len(idle_taxis) > 0):
-        #                     print('Removing taxi')
-        #                     taxi = random.choice(idle_taxis)
-        #                     taxis.remove(taxi)
-        #                     traci.vehicle.remove(taxi.id)
-        #                     idle_taxis.remove(taxi)
-        #         # If difference is positive, add taxis
-        #         elif (average_diff > 0):
-        #             print('Adding {} taxis'.format(round(average_diff*1.5)))
-        #             for i in range(round(average_diff)):
-        #                 new_taxi()
-
-            # taxi_res_diffs = []
-
-            # idle_taxi_sum = 0
-            # idle_taxi_count = 0
+        idle_taxi_counts.append(len(idle_taxis))
 
         # Deal with queue of reservations
         for reservation in reservations_queue:
 
             # Decide which taxi to dispatch to reservation
+            tic = time.perf_counter()
             taxi = dispatch_taxi_greedy(reservation, idle_taxis)
+            toc = time.perf_counter()
+            dispatch_alg_timings.append(toc-tic)
             
             # Actually dispatch that taxi
             if (taxi != None):
@@ -239,20 +234,21 @@ def run():
                 try:
                     traci.vehicle.dispatchTaxi(taxi.id, taxi.pickup)
                     if (verbose):
-                        print('dispatched taxi {} for reservation {}'.format(taxi.id, reservation.id))
+                        print('Dispatched taxi {} for reservation {}'.format(taxi.id, reservation.id))
                     total_dispatches += 1
                     reservations_queue.remove(reservation)
                     idle_taxis.remove(taxi)
                 except:
                     if (verbose):
-                        print("couldn't dispatch taxi {} for reservation {} at time {}".format(taxi.id, reservation.id, traci.simulation.getTime()))
+                        print("Couldn't dispatch taxi {} for reservation {} at time {}".format(taxi.id, reservation.id, traci.simulation.getTime()))
 
         # Update difference between idle taxis and reservation queue
-        # taxi_res_diffs.append(len(reservations_queue)-len(idle_taxis))
-        if (len(reservations_queue) > 4):
-            for i in range(len(reservations_queue)):
+        if (len(idle_taxis) < 20):
+            # print("Adding taxis: {}".format(len(idle_taxis)))
+            for i in range(max(5, len(reservations_queue))):
                 new_taxi()
-        if (len(idle_taxis) > 4):
+        if (len(idle_taxis) > 40):
+            # print("Removing taxis: {}".format(len(idle_taxis)))
             taxi = random.choice(idle_taxis)
             taxis.remove(taxi)
             traci.vehicle.remove(taxi.id)
@@ -260,6 +256,8 @@ def run():
 
     # End simulation
     traci.close()
+
+    store(simulation_log, './temp/taxi_simulation_log.pkl')
 
 
 if __name__ == "__main__":
