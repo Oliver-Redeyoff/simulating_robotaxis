@@ -1,7 +1,7 @@
 from typing import List
 import xml.etree.ElementTree as ET
 
-from datatypes import Trip, TripInfo
+from datatypes import Trip, TripInfo, TaxiSimulationLog
 from utilities import retrieve
 
 def run():
@@ -9,14 +9,10 @@ def run():
     trips: List[Trip] = retrieve('../temp/trips.pkl')
     trip_ids = [str(trip.id) for trip in trips]
 
-    # Retrive tripinfos for both simulations
-    base_info_tree = ET.parse('../out/base.tripinfo.xml')
+    # Retrive data for base simulation
+    base_info_tree = ET.parse('../temp/base.tripinfo.xml')
     base_info_root = base_info_tree.getroot()
     base_trip_infos: List[TripInfo] = {}
-
-    taxi_info_tree = ET.parse('../out/taxi.tripinfo.xml')
-    taxi_info_root = taxi_info_tree.getroot()
-    taxi_trip_infos: List[TripInfo] = {}
 
     for trip_info in base_info_root.findall('tripinfo'):
         base_trip_infos[trip_info.attrib['id']] = TripInfo(
@@ -26,6 +22,12 @@ def run():
             float(trip_info.attrib['duration']),
             float(trip_info.attrib['routeLength'])
         )
+
+    # Retrive data for taxi simulation
+    taxi_info_tree = ET.parse('../temp/taxi.tripinfo.xml')
+    taxi_info_root = taxi_info_tree.getroot()
+    taxi_trip_infos: List[TripInfo] = {}
+    taxi_simulation_logs: List[TaxiSimulationLog] = retrieve('../temp/taxi_simulation_log.pkl')
 
     for trip_info in taxi_info_root.findall('personinfo'):
         ride_info = trip_info[0]
@@ -37,6 +39,7 @@ def run():
             float(ride_info.attrib['routeLength'])
         )
 
+    # Process and compare data
     base_total_travel_time = 0
     taxi_total_travel_time = 0
     for trip_id in trip_ids:

@@ -42,11 +42,10 @@ def run():
     subprocess.check_call(duarouter_options)
 
     # Run the simulation using the sumo program
-    create_dir('../out')
     generate_config(simulation.net_file, simulation.base_routes_file, simulation.start_time, simulation.end_time, '../temp/base.sumocfg', True)
     sumo_options = ['sumo',
                     '--configuration-file', '../temp/base.sumocfg',
-                    '--tripinfo-output', '../out/base.tripinfo.xml']
+                    '--tripinfo-output', '../temp/base.tripinfo.xml']
     subprocess.check_call(sumo_options)
 
 if __name__ == '__main__':
