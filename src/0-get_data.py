@@ -11,7 +11,7 @@ import folium
 import utm
 from shapely.geometry import shape, Point
 
-from datatypes import Count, CountPoint, P
+from datatypes import Count, CountPoint, P, City, Simulation
 from utilities import create_dir, store
 
 if 'SUMO_HOME' in os.environ:
@@ -38,15 +38,23 @@ def aggregate_counts(count_point: CountPoint, raw_count):
 
 def run():
 
-    # Get name of target, and get it's position using google maps places api
-    # target_name = input("Enter town name : ")
-    target_name = "Bath"
-    x = requests.get('https://maps.googleapis.com/maps/api/geocode/json?address=' + target_name + '&key=AIzaSyAhmPLZ2MEGQK1-7rTmyjbN_r6Pnqjr8YM')
+    # Define city to run simulation on
+    city = City(
+        "Bath",
+        0,
+        0,
+        None,
+        None,
+        None
+    )
+
+    # Get position of city using google maps places api
+    x = requests.get('https://maps.googleapis.com/maps/api/geocode/json?address=' + city.name + '&key=AIzaSyAhmPLZ2MEGQK1-7rTmyjbN_r6Pnqjr8YM')
     res = json.loads(x.text)
 
-    target_geometry = res['results'][0]['geometry']
-    target_bbox = target_geometry['viewport']
-    m = folium.Map(location=[target_geometry['location']['lat'], target_geometry['location']['lng']])
+    city.geometry = res['results'][0]['geometry']
+    city.bbox = city.geometry['viewport']
+    m = folium.Map(location=[city.geometry['location']['lat'], city.geometry['location']['lng']])
 
 
     # Download osm data using bounding box of place
@@ -57,9 +65,9 @@ def run():
         if (attempts == 10):
             sys.exit('Took too many attempts to download osm data')
         print("Attempt {} to get osm data".format(attempts))
-        bbox_str = ' '+str(target_bbox['southwest']['lng'])+','+str(target_bbox['southwest']['lat'])+','+str(target_bbox['northeast']['lng'])+','+str(target_bbox['northeast']['lat'])
+        bbox_str = ' '+str(city.bbox['southwest']['lng'])+','+str(city.bbox['southwest']['lat'])+','+str(city.bbox['northeast']['lng'])+','+str(city.bbox['northeast']['lat'])
         status = osmGet.get(['--bbox', bbox_str,
-                    '--prefix', 'target',
+                    # '--prefix', 'target',
                     '--output-dir', '../temp'])
         attempts += 1
 
@@ -70,21 +78,42 @@ def run():
     local_authorities = json.loads(local_authorities_raw)
 
     transformer = Transformer.from_crs("epsg:4326", "epsg:3857")
-    target_position = Point(transformer.transform(target_geometry['location']['lat'], target_geometry['location']['lng']))
-    local_authority_id = 0
+    city.position = Point(transformer.transform(city.geometry['location']['lat'], city.geometry['location']['lng']))
 
     for local_authority in local_authorities['features']:
         multipolygon = shape(local_authority['geometry'])
-        if multipolygon.contains(target_position):
-            local_authority_id = local_authority['properties']['id']
-            print("Found target area in " + local_authority['properties']['Name'])
+        if multipolygon.contains(city.position):
+            city.local_authority_id = int(local_authority['properties']['id'])
+            print("Found city in " + local_authority['properties']['Name'])
 
-    if (local_authority_id == 0):
-        print("ERROR: could not find area in any british local authority")
+    if (city.local_authority_id == 0):
+        sys.exit("Could not find city in any british local authority")
 
+    
+    # Get the population of the city
+    with open('./city_populations.csv', mode='r') as csv_city_populations:
+        csv_reader = csv.DictReader(csv_city_populations)
+        for row in csv_reader:
+            if (row['city'].lower() == city.name.lower()):
+                city.population = int(row['population'])
+                print('Population of {} is {}'.format(city.name, city.population))
+
+    if (city.population == 0):
+        sys.exit('Could not find population of city')
+    else:
+        simulation = Simulation(
+            city,
+            23, 
+            0,
+            0, 
+            0,
+            'city.net.xml',
+            'base.routes.xml',
+            'taxi.routes.xml')
+        store(simulation, '../temp/simulation.pkl')
 
     # Get count point data for relevant local authority
-    x = requests.get('https://storage.googleapis.com/dft-statistics/road-traffic/downloads/rawcount/local_authority_id/dft_rawcount_local_authority_id_' + str(local_authority_id) + '.csv');
+    x = requests.get('https://storage.googleapis.com/dft-statistics/road-traffic/downloads/rawcount/local_authority_id/dft_rawcount_local_authority_id_' + str(city.local_authority_id) + '.csv');
     raw_counts = x.text.split('\n');
     raw_counts = list(csv.reader(raw_counts));
     list.pop(raw_counts);

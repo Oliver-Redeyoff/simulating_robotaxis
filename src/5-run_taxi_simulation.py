@@ -217,10 +217,7 @@ def run():
         for reservation in reservations_queue:
 
             # Decide which taxi to dispatch to reservation
-            tic0 = time.perf_counter()
             taxi = dispatch_taxi_greedy(reservation, idle_taxis)
-            toc0 = time.perf_counter()
-            dispatch_alg_timings.append(toc0-tic0)
             
             # Actually dispatch that taxi
             if (taxi != None):

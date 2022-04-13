@@ -7,8 +7,8 @@ import xml.etree.ElementTree as ET
 
 from tqdm import tqdm
 
-from datatypes import Lane, Edge, Taz
-from utilities import store
+from datatypes import Lane, Edge, Simulation, Taz
+from utilities import retrieve, store
 
 if 'SUMO_HOME' in os.environ:
     sys.path.append(os.path.join(os.environ['SUMO_HOME'], 'tools/contributed/saga'))
@@ -27,10 +27,12 @@ def normalise_shape(shape_str, origin):
 
 def run():
 
+    simulation: Simulation = retrieve('../temp/simulation.pkl')
+
     # Generate sumo network
     netconvert_options = ['netconvert',
-                        '--osm', '../temp/target_bbox.osm.xml',
-                        '--o', '../temp/target.net.xml',
+                        '--osm', '../temp/osm_bbox.osm.xml',
+                        '--o', '../temp/' + simulation.net_file,
                         '--geometry.remove', 'true',
                         '--ramps.guess', 'true',
                         '--junctions.join', 'true',
@@ -44,15 +46,15 @@ def run():
     subprocess.check_call(netconvert_options)
 
     # Deduce TAZs using the saga tool
-    saga_options = ['--osm', '../temp/target_bbox.osm.xml',
-                '--net', '../temp/target.net.xml',
+    saga_options = ['--osm', '../temp/osm_bbox.osm.xml',
+                '--net', '../temp/' + simulation.net_file,
                 '--taz-output', '../temp/osm_taz.xml',
                 '--weight-output', '../temp/osm_taz_weight.csv',
                 '--poly-output', '../temp/poly.xml']
     generateTAZBuildingsFromOSM.main(saga_options)
     
     # Extract all edges and their UTM position
-    net_tree = ET.parse('../temp/target.net.xml')
+    net_tree = ET.parse('../temp/' + simulation.net_file)
     net_root = net_tree.getroot()
 
     # Get origin UTM position

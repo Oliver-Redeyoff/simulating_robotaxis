@@ -48,7 +48,17 @@ class Taz:
     area: float
 
 @dataclass
+class City:
+    name: str
+    population: int
+    local_authority_id: str
+    geometry: any
+    bbox: any
+    position: any
+
+@dataclass
 class Simulation:
+    city: City
     start_hour: int
     start_time: float
     end_hour: int

@@ -32,7 +32,7 @@ def run():
 
     # Generate routes from trips using duarouter
     duarouter_options = ['duarouter',
-                        '--net-file', '../temp/target.net.xml',
+                        '--net-file', '../temp/' + simulation.net_file,
                         '--route-files', generate_trips_file(trips),
                         '--output-file', '../temp/' + simulation.base_routes_file,
                         '--ignore-errors', 'true',

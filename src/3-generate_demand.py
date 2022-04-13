@@ -3,6 +3,7 @@ import math
 import random
 import os
 import sys
+import csv
 import xml.etree.ElementTree as ET
 
 from tqdm import tqdm
@@ -58,16 +59,10 @@ def run():
     tazs: List[Taz] = retrieve('../temp/tazs.pkl')
     edges: List[Edge] = retrieve('../temp/edges.pkl')
     drivable_edges: List[str] = retrieve('../temp/drivable_edges.pkl')
+    simulation: Simulation = retrieve('../temp/simulation.pkl')
 
-    simulation = Simulation(
-        23, 
-        0,
-        0, 
-        0,
-        'target.net.xml',
-        'base.routes.xml',
-        'taxi.routes.xml')
-
+    
+    # Start sumo
     generate_config(simulation.net_file, generate_temp_route_file(), simulation.start_time, simulation.end_time, '../temp/temp.sumocfg', True)
     sumoBinary = checkBinary('sumo')
     traci.start([sumoBinary, "-c", '../temp/temp.sumocfg'])
@@ -108,10 +103,9 @@ def run():
     # plt.show()
 
 
-    # Generate commuters            
-    population = 100000
-    commuter_percentage = 0.25
-    total_commuters = round(population*commuter_percentage)
+    # Generate commuters
+    commuter_percentage = 0.33
+    total_commuters = round(simulation.city.population*commuter_percentage)
     total_trips = total_commuters*2
 
     commuters: List[Commuter] = [Commuter('', '', None, None) for i in range(total_commuters)]
