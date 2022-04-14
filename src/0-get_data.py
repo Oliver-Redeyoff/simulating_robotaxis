@@ -49,12 +49,16 @@ def run():
     )
 
     # Get position of city using google maps places api
-    x = requests.get('https://maps.googleapis.com/maps/api/geocode/json?address=' + city.name + '&key=AIzaSyAhmPLZ2MEGQK1-7rTmyjbN_r6Pnqjr8YM')
+    x = requests.get('https://maps.googleapis.com/maps/api/geocode/json?address=' 
+                    + city.name + '&key=AIzaSyAhmPLZ2MEGQK1-7rTmyjbN_r6Pnqjr8YM')
     res = json.loads(x.text)
 
     city.geometry = res['results'][0]['geometry']
     city.bbox = city.geometry['viewport']
-    m = folium.Map(location=[city.geometry['location']['lat'], city.geometry['location']['lng']])
+    m = folium.Map(
+        location=[city.geometry['location']['lat'], 
+        city.geometry['location']['lng']]
+        )
 
 
     # Download osm data using bounding box of place
@@ -65,9 +69,12 @@ def run():
         if (attempts == 10):
             sys.exit('Took too many attempts to download osm data')
         print("Attempt {} to get osm data".format(attempts))
-        bbox_str = ' '+str(city.bbox['southwest']['lng'])+','+str(city.bbox['southwest']['lat'])+','+str(city.bbox['northeast']['lng'])+','+str(city.bbox['northeast']['lat'])
+        bbox_str = ' ' + \
+            str(city.bbox['southwest']['lng']) + ',' + \
+            str(city.bbox['southwest']['lat']) + ',' + \
+            str(city.bbox['northeast']['lng']) + ',' + \
+            str(city.bbox['northeast']['lat'])
         status = osmGet.get(['--bbox', bbox_str,
-                    # '--prefix', 'target',
                     '--output-dir', '../temp'])
         attempts += 1
 
@@ -78,7 +85,12 @@ def run():
     local_authorities = json.loads(local_authorities_raw)
 
     transformer = Transformer.from_crs("epsg:4326", "epsg:3857")
-    city.position = Point(transformer.transform(city.geometry['location']['lat'], city.geometry['location']['lng']))
+    city.position = Point(
+        transformer.transform(
+            city.geometry['location']['lat'], 
+            city.geometry['location']['lng']
+        )
+    )
 
     for local_authority in local_authorities['features']:
         multipolygon = shape(local_authority['geometry'])
@@ -113,7 +125,9 @@ def run():
         store(simulation, '../temp/simulation.pkl')
 
     # Get count point data for relevant local authority
-    x = requests.get('https://storage.googleapis.com/dft-statistics/road-traffic/downloads/rawcount/local_authority_id/dft_rawcount_local_authority_id_' + str(city.local_authority_id) + '.csv');
+    x = requests.get(
+        'https://storage.googleapis.com/dft-statistics/road-traffic/downloads/rawcount/local_authority_id/' + \
+        'dft_rawcount_local_authority_id_' + str(city.local_authority_id) + '.csv');
     raw_counts = x.text.split('\n');
     raw_counts = list(csv.reader(raw_counts));
     list.pop(raw_counts);
@@ -139,7 +153,10 @@ def run():
                 raw_count[P.road_name.value],
                 float(raw_count[P.latitude.value]),
                 float(raw_count[P.longitude.value]),
-                utm.from_latlon(float(raw_count[P.latitude.value]), float(raw_count[P.longitude.value])),
+                utm.from_latlon(
+                    float(raw_count[P.latitude.value]), 
+                    float(raw_count[P.longitude.value])
+                ),
                 [],
                 (-1, None)
             )

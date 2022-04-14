@@ -57,7 +57,7 @@ def generate_config(net_file: str, route_file: str, start_time: int, end_time: i
     processing_config = ET.SubElement(config_root, 'processing')
     ET.SubElement(processing_config, 'ignore-route-errors', {'value': 'true'})
     routing_config = ET.SubElement(config_root, 'routing')
-    ET.SubElement(routing_config, 'routing-algorithm ', {'value': 'astar'})
+    # ET.SubElement(routing_config, 'routing-algorithm ', {'value': 'astar'})
     ET.SubElement(routing_config, 'persontrip.transfer.taxi-walk', {'value': 'allJunctions'})
     ET.SubElement(routing_config, 'persontrip.transfer.walk-taxi', {'value': 'allJunctions'})
     if (no_output):

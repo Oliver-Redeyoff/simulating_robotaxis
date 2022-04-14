@@ -240,9 +240,9 @@ def run():
 
         # Update number of taxis in simulation
         if (len(idle_taxis) < 10):
-            for i in range(max(5, len(reservations_queue))):
+            for i in range(max(50, len(reservations_queue))):
                 new_taxi()
-        if (len(idle_taxis) > 20):
+        if (len(idle_taxis) > 100):
             taxi = random.choice(idle_taxis)
             taxis.remove(taxi)
             traci.vehicle.remove(taxi.id)
