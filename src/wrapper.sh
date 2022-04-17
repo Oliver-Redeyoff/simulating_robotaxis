@@ -1,9 +1,11 @@
+rm -r ../temp
+
 echo "--RETRIEVING DATA--"
 python3 0-get_data.py
 echo ""
 
 echo "--GENERATING TAZ--"
-python3 1-generate_taz.py > /dev/null 2>&1
+python3 1-generate_taz.py >/dev/null 2>&1
 echo ""
 
 echo "--FILTERING COUNT POINTS--"
@@ -19,5 +21,5 @@ python3 4-run_base_simulation.py
 echo ""
 
 echo "--RUNNING TAXI SIMULATION--"
-python3 5-run_taxi_simulation
+python3 5-run_taxi_simulation.py
 echo ""
