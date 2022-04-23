@@ -77,7 +77,7 @@ class Trip:
          return self.depart < other.depart
 
 @dataclass
-class Commuter:
+class Driver:
     home_edge: Edge
     destination_edge: Edge
     trip1: Trip

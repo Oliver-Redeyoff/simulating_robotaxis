@@ -3,12 +3,12 @@ import math
 import random
 import os
 import sys
-import csv
+from matplotlib import pyplot as plt
 import xml.etree.ElementTree as ET
 
 from tqdm import tqdm
 
-from datatypes import CountPoint, Edge, Taz, Simulation, Trip, Commuter
+from datatypes import CountPoint, Edge, Taz, Simulation, Trip, Driver
 from utilities import retrieve, store, generate_config, indent
 
 # We need to import python modules from the $SUMO_HOME/tools directory
@@ -103,13 +103,13 @@ def run():
     # plt.show()
 
 
-    # Generate commuters
-    commuter_percentage = 0.33
-    total_commuters = round(simulation.city.population*commuter_percentage)
-    total_trips = total_commuters*2
+    # Generate drivers
+    driver_percentage = 0.33
+    total_drivers = round(simulation.city.population*driver_percentage)
+    total_trips = total_drivers*2
 
-    commuters: List[Commuter] = [Commuter('', '', None, None) for i in range(total_commuters)]
-    for commuter in tqdm(commuters, desc='Generating commuters'):
+    drivers: List[Driver] = [Driver('', '', None, None) for i in range(total_drivers)]
+    for driver in tqdm(drivers, desc='Generating drivers'):
         route_is_possible = False
         while not route_is_possible:
 
@@ -125,8 +125,8 @@ def run():
 
             if (route_1.length != 0 and route_2.length != 0):
                 route_is_possible = True
-                commuter.home_edge = start_edge
-                commuter.destination_edge = end_edge
+                driver.home_edge = start_edge
+                driver.destination_edge = end_edge
 
     
     # Generate trips
@@ -135,26 +135,26 @@ def run():
     for hour in tqdm(range(simulation.start_hour, simulation.end_hour+1), desc='Generating trips'):
         trip_count = math.floor(total_trips * aggregated_counts[hour]['distribution_value'])
         generated_trip_count = 0
-        processed_commuters = []
+        processed_drivers = []
 
         while generated_trip_count != trip_count:
-            commuter = random.choice(commuters)
-            if (commuter in processed_commuters):
+            driver = random.choice(drivers)
+            if (driver in processed_drivers):
                 continue
             
-            if (commuter.trip1 == None):
-                commuter.trip1 = Trip(
+            if (driver.trip1 == None):
+                driver.trip1 = Trip(
                     trip_id,
                     float(hour*3600 + round(random.random()*3600)),
-                    commuter.home_edge.id,
-                    commuter.destination_edge.id
+                    driver.home_edge.id,
+                    driver.destination_edge.id
                 )
-            elif (commuter.trip2 == None):
-                commuter.trip2 = Trip(
+            elif (driver.trip2 == None):
+                driver.trip2 = Trip(
                     trip_id,
                     float(hour*3600 + round(random.random()*3600)),
-                    commuter.destination_edge.id,
-                    commuter.home_edge.id
+                    driver.destination_edge.id,
+                    driver.home_edge.id
                 )
             else:
                 continue
@@ -163,8 +163,8 @@ def run():
             trip_id += 1
 
     trips: List[Trip] = []
-    trips.extend([commuter.trip1 for commuter in commuters if commuter.trip1 != None])
-    trips.extend([commuter.trip2 for commuter in commuters if commuter.trip2 != None])
+    trips.extend([driver.trip1 for driver in drivers if driver.trip1 != None])
+    trips.extend([driver.trip2 for driver in drivers if driver.trip2 != None])
     trips.sort()
 
 
