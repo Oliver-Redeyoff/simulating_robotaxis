@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 import csv
 import os
 import sys
@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 
 from tqdm import tqdm
 
-from datatypes import Lane, Edge, Simulation, Taz
+from datatypes import Lane, Edge, Simulation, Taz, CountPoint
 from utilities import retrieve, store
 
 if 'SUMO_HOME' in os.environ:
@@ -25,9 +25,56 @@ def normalise_shape(shape_str, origin):
 
     return shape
 
+# Get distance from count_point to to lane
+def min_dist_to_lane(lane: Lane, count_point: CountPoint) -> float:
+
+    min_dist = -1;
+
+    for i in range(1, len(lane.shape)):
+        x = count_point.utm[0];
+        y = count_point.utm[1];
+        x1 = lane.shape[i-1][0];
+        y1 = lane.shape[i-1][1];
+        x2 = lane.shape[i][0];
+        y2 = lane.shape[i][1];
+
+        A = x - x1;
+        B = y - y1;
+        C = x2 - x1;
+        D = y2 - y1;
+
+        dot = A * C + B * D;
+        len_sq = C * C + D * D;
+        param = -1;
+        if (len_sq != 0):
+            param = dot / len_sq;
+
+        xx = 0.0;
+        yy = 0.0;
+
+        if (param < 0):
+            xx = x1;
+            yy = y1;
+        elif (param > 1):
+            xx = x2;
+            yy = y2;
+        else:
+            xx = x1 + param * C;
+            yy = y1 + param * D;
+
+        dx = x - xx;
+        dy = y - yy;
+        dist = math.sqrt(dx * dx + dy * dy);
+
+        if (min_dist == -1 or dist<min_dist):
+            min_dist = dist;
+    
+    return min_dist;
+
 def run():
 
     simulation: Simulation = retrieve('../temp/simulation.pkl')
+    count_points: List[CountPoint] = retrieve('../temp/count_points.pkl')
 
     # Generate sumo network
     netconvert_options = ['netconvert',
@@ -92,6 +139,21 @@ def run():
         
         edges.append(new_edge)
 
+    # Find closest lane for each count_point
+    for count_point in tqdm(count_points, desc='Filtering count points'):
+        closest_lane: Tuple[float, Lane] = (-1, None)
+        
+        for edge in edges:
+            for lane in edge.lanes:
+                dist = min_dist_to_lane(lane, count_point)
+                if (closest_lane[0] == -1 or dist<closest_lane[0]):
+                    closest_lane = (dist, lane)
+        
+        count_point.closest_lane = closest_lane
+
+    # Filter out count points which are more that 10 metres away from the closest lane
+    count_points = [count_point for count_point in count_points if count_point.closest_lane[0]<10]
+
 
     # Retrieve tazs and their weights
     tazs: List[Taz] = []
@@ -133,6 +195,7 @@ def run():
 
     # Write edges and drivable edges data to file
     store(edges, '../temp/edges.pkl')
+    store(count_points, '../temp/filtered_count_points.pkl')
     store(drivable_edges, '../temp/drivable_edges.pkl')
             
 

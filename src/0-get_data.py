@@ -40,7 +40,7 @@ def run():
 
     # Define city to run simulation on
     city = City(
-        "Bath",
+        "Caerdydd",
         0,
         0,
         None,
