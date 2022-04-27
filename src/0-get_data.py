@@ -40,7 +40,7 @@ def run():
 
     # Define city to run simulation on
     city = City(
-        "Caerdydd",
+        "Reading",
         0,
         0,
         None,
@@ -50,7 +50,7 @@ def run():
 
     # Get position of city using google maps places api
     x = requests.get('https://maps.googleapis.com/maps/api/geocode/json?address=' 
-                    + city.name + '&key=AIzaSyAhmPLZ2MEGQK1-7rTmyjbN_r6Pnqjr8YM')
+                    + city.name + ', UK&key=AIzaSyAhmPLZ2MEGQK1-7rTmyjbN_r6Pnqjr8YM')
     res = json.loads(x.text)
 
     city.geometry = res['results'][0]['geometry']
@@ -107,7 +107,7 @@ def run():
         csv_reader = csv.DictReader(csv_city_populations)
         for row in csv_reader:
             if (row['city'].lower() == city.name.lower()):
-                city.population = int(row['population'])
+                city.population = int(row['population_proper'])
                 print('Population of {} is {}'.format(city.name, city.population))
 
     if (city.population == 0):
