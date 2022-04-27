@@ -50,23 +50,27 @@ def generate_config(net_file: str, route_file: str, start_time: int, end_time: i
     input_config = ET.SubElement(config_root, 'input')
     ET.SubElement(input_config, 'net-file', {'value': net_file})
     ET.SubElement(input_config, 'route-files', {'value': route_file})
+
     time_config = ET.SubElement(config_root, 'time')
     ET.SubElement(time_config, 'begin', {'value': str(start_time)})
     ET.SubElement(time_config, 'step-length', {'value': '1'})
     ET.SubElement(time_config, 'end', {'value': str(end_time)})
+
     processing_config = ET.SubElement(config_root, 'processing')
     ET.SubElement(processing_config, 'ignore-route-errors', {'value': 'true'})
+
     routing_config = ET.SubElement(config_root, 'routing')
-    # ET.SubElement(routing_config, 'routing-algorithm ', {'value': 'astar'})
     ET.SubElement(routing_config, 'persontrip.transfer.taxi-walk', {'value': 'allJunctions'})
     ET.SubElement(routing_config, 'persontrip.transfer.walk-taxi', {'value': 'allJunctions'})
+
     if (no_output):
         report_config = ET.SubElement(config_root, 'report')
         ET.SubElement(report_config, 'no-warnings', {'value': 'true'})
+        
     taxi_config = ET.SubElement(config_root, 'taxi-device')
     ET.SubElement(taxi_config, 'device.taxi.dispatch-algorithm', {'value': 'traci'})
+    ET.SubElement(taxi_config, 'device.taxi.dispatch-period', {'value': '0'})
     ET.SubElement(taxi_config, 'device.taxi.idle-algorithm', {'value': 'randomCircling'})
-    # ET.SubElement(taxi_config, 'device.taxi.dispatch-algorithm.output', {'value': '../out/taxi_dispatch.xml'})
 
     config_tree = ET.ElementTree(config_root)
     indent(config_root)
