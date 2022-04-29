@@ -93,9 +93,11 @@ class Taxi:
 class TripInfo:
     trip_id: str
     taxi_id: str
+    depart_time: float
     waiting_time: float
     duration: float
     length: float
+    time_loss: float
 
 @dataclass
 class TaxiSimulationLog:

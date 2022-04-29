@@ -1,5 +1,4 @@
-*.DS_Store
-out/**
-temp/**
-__pycache__/
+/*
+!.gitignore
+!src/
 src/__pycache__/
