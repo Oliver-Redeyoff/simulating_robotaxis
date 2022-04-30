@@ -52,9 +52,9 @@ def generate_config(net_file: str, route_file: str, start_time: int, end_time: i
     ET.SubElement(input_config, 'route-files', {'value': route_file})
 
     time_config = ET.SubElement(config_root, 'time')
-    ET.SubElement(time_config, 'begin', {'value': str(start_time)})
+    ET.SubElement(time_config, 'begin', {'value': str(start_time-200 if start_time >= 200 else 0)})
     ET.SubElement(time_config, 'step-length', {'value': '1'})
-    ET.SubElement(time_config, 'end', {'value': str(end_time)})
+    ET.SubElement(time_config, 'end', {'value': str(end_time+1200)})
 
     processing_config = ET.SubElement(config_root, 'processing')
     ET.SubElement(processing_config, 'ignore-route-errors', {'value': 'true'})
@@ -69,7 +69,7 @@ def generate_config(net_file: str, route_file: str, start_time: int, end_time: i
         
     taxi_config = ET.SubElement(config_root, 'taxi-device')
     ET.SubElement(taxi_config, 'device.taxi.dispatch-algorithm', {'value': 'traci'})
-    ET.SubElement(taxi_config, 'device.taxi.dispatch-period', {'value': '0'})
+    ET.SubElement(taxi_config, 'device.taxi.dispatch-period', {'value': '1'})
     ET.SubElement(taxi_config, 'device.taxi.idle-algorithm', {'value': 'randomCircling'})
 
     config_tree = ET.ElementTree(config_root)

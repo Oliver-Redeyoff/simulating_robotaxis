@@ -174,7 +174,7 @@ def run():
     idle_taxi_counts = []
     reservation_queue_counts = []
 
-    for _ in tqdm(range(simulation.start_time, simulation.end_time)):
+    for _ in tqdm(range(simulation.start_time, simulation.end_time+1200)):
 
         # Move to next simulation step
         traci.simulationStep()
@@ -193,10 +193,11 @@ def run():
             ))
 
             # Print out info
-            print("Total reservations: {} and total dispatches: {}".format(total_reservations, total_dispatches))
-            print("Total taxis: {}".format(len(taxis)))
-            print("Idle taxis average: {}".format(sum(idle_taxi_counts)/len(idle_taxi_counts)))
-            print("Reservation queue average: {}".format(sum(reservation_queue_counts)/len(reservation_queue_counts)))
+            if (verbose):
+                print("Total reservations: {} and total dispatches: {}".format(total_reservations, total_dispatches))
+                print("Total taxis: {}".format(len(taxis)))
+                print("Idle taxis average: {}".format(sum(idle_taxi_counts)/len(idle_taxi_counts)))
+                print("Reservation queue average: {}".format(sum(reservation_queue_counts)/len(reservation_queue_counts)))
 
             # Reset stuff
             idle_taxi_counts = []

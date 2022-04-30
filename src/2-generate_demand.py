@@ -85,7 +85,7 @@ def run():
             aggregated_counts[count.hour]['sum'] += count.value_sum
             aggregated_counts[count.hour]['count'] += count.value_count
     
-    simulation.start_time = simulation.start_hour*3600-200
+    simulation.start_time = simulation.start_hour*3600
     simulation.end_time = simulation.end_hour*3600
 
     # Calculate distribution from aggregated data
