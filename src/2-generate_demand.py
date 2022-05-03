@@ -104,7 +104,7 @@ def run():
 
 
     # Generate drivers
-    driver_percentage = 0.33
+    driver_percentage = 0.20
     total_drivers = round(simulation.city.population*driver_percentage)
     total_trips = total_drivers*2
 
