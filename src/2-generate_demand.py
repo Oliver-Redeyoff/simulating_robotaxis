@@ -3,7 +3,6 @@ import math
 import random
 import os
 import sys
-from matplotlib import pyplot as plt
 import xml.etree.ElementTree as ET
 
 from tqdm import tqdm
@@ -99,12 +98,9 @@ def run():
         if hour_count['count'] != 0:
             hour_count['distribution_value'] = hour_count['average']/total
 
-    # plt.plot([count['distribution_value'] for count in aggregated_counts])
-    # plt.show()
-
 
     # Generate drivers
-    driver_percentage = 0.20
+    driver_percentage = 0.25
     total_drivers = round(simulation.city.population*driver_percentage)
     total_trips = total_drivers*2
 
