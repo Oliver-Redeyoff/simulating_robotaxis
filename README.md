@@ -25,3 +25,5 @@ Python version `3.6` or higher is required, and the following pip packages are e
     shapely
     tqdm
     matplotlib
+
+The source for this tool is contained within the `src` directory, each python program can be run individually, or equally the `wrapper.sh` script runs them sequentially.
