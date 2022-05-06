@@ -7,6 +7,8 @@ from tqdm import tqdm
 from datatypes import Trip, Simulation
 from utilities import create_dir, retrieve, indent, generate_config
 
+
+# Generate file containing trip definitions
 def generate_trips_file(trips: List[Trip]):
     base_trips_root = ET.Element('routes')
 
@@ -26,9 +28,10 @@ def generate_trips_file(trips: List[Trip]):
 
 def run():
 
-    # Retrieve list of trips
+    # Retrieve data
     trips: List[Trip] = retrieve('../temp/trips.pkl')
     simulation: Simulation = retrieve('../temp/simulation.pkl')
+
 
     # Generate routes from trips using duarouter
     duarouter_options = ['duarouter',
@@ -40,6 +43,7 @@ def run():
                         '--unsorted-input', 'true',
                         '--no-warnings', 'true']
     subprocess.check_call(duarouter_options)
+
 
     # Run the simulation using the sumo program
     generate_config(simulation.net_file, simulation.base_routes_file, simulation.start_time, simulation.end_time, '../temp/base.sumocfg', True)

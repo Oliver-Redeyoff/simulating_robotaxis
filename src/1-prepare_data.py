@@ -11,6 +11,7 @@ from tqdm import tqdm
 from datatypes import Lane, Edge, Simulation, Taz, CountPoint
 from utilities import retrieve, store
 
+# We need to import python modules from the $SUMO_HOME/contributed/saga directory
 if 'SUMO_HOME' in os.environ:
     sys.path.append(os.path.join(os.environ['SUMO_HOME'], 'tools/contributed/saga'))
     import generateTAZBuildingsFromOSM
@@ -18,6 +19,7 @@ else:
     sys.exit("please declare environment variable 'SUMO_HOME'")
 
 
+# Normalise coordinates of shape
 def normalise_shape(shape_str, origin):
     shape = [list(map(float, point.split(","))) for point in shape_str.split(" ")]
     for point in shape:
@@ -74,8 +76,10 @@ def min_dist_to_lane(lane: Lane, count_point: CountPoint) -> float:
 
 def run():
 
+    # Retrieve data
     simulation: Simulation = retrieve('../temp/simulation.pkl')
     count_points: List[CountPoint] = retrieve('../temp/count_points.pkl')
+
 
     # Generate sumo network
     netconvert_options = ['netconvert',
@@ -93,6 +97,7 @@ def run():
                         '--remove-edges.isolated', 'true']
     subprocess.check_call(netconvert_options)
 
+
     # Deduce TAZs using the saga tool
     saga_options = ['--osm', '../temp/osm_bbox.osm.xml',
                 '--net', '../temp/' + simulation.net_file,
@@ -101,6 +106,7 @@ def run():
                 '--poly-output', '../temp/poly.xml']
     generateTAZBuildingsFromOSM.main(saga_options)
     
+
     # Extract all edges and their UTM position
     net_tree = ET.parse('../temp/' + simulation.net_file)
     net_root = net_tree.getroot()
@@ -140,6 +146,7 @@ def run():
         
         edges.append(new_edge)
 
+
     # Find closest lane for each count_point
     for count_point in tqdm(count_points, desc='Filtering count points'):
         closest_lane: Tuple[float, Lane] = (-1, None)
@@ -164,6 +171,7 @@ def run():
 
     drivable_edges = set([edge_.id for edge_ in edges if edge_.is_drivable])
 
+
     # Instantiate tazs
     for taz in tqdm(taz_root, desc='Generating tazs'):
         tazs.append(Taz(
@@ -184,6 +192,7 @@ def run():
             taz.node_count = int(row['#Nodes'])
             taz.area = float(row['Area'])
 
+
     # Filter out taz which don't have any drivable edges
     tazs = [taz for taz in tazs if len(taz.drivable_edges)>0]
 
@@ -191,14 +200,12 @@ def run():
     for taz in tazs:
         taz.weight = taz.node_count/taz_total_node_count
 
-    # Write taz data data to file
-    store(tazs, '../temp/tazs.pkl')
 
-    # Write edges and drivable edges data to file
+    # Write data to file
+    store(tazs, '../temp/tazs.pkl')
     store(edges, '../temp/edges.pkl')
     store(count_points, '../temp/filtered_count_points.pkl')
     store(drivable_edges, '../temp/drivable_edges.pkl')
             
-
 if __name__ == '__main__':
     run()

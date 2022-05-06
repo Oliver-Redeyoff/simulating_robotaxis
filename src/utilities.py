@@ -2,11 +2,13 @@ import os
 import pickle
 import xml.etree.ElementTree as ET
 
+# Creates a given folder
 def create_dir(path):
     exists = os.path.exists(path)
     if not exists:
         os.makedirs(path)
 
+# Store data in given file
 def store(data, path):
     with open(path, 'wb') as outp:
         if (type(data) == list):
@@ -15,7 +17,7 @@ def store(data, path):
         else:
             pickle.dump(data, outp, pickle.HIGHEST_PROTOCOL)
 
-
+# Retrieve data from given file
 def retrieve(path):
     object_list = []
     with (open(path, "rb")) as openfile:
@@ -29,6 +31,7 @@ def retrieve(path):
     else:
         return object_list
 
+# Beautify XML 
 def indent(elem, level=0):
     i = "\n" + level*"  "
     if len(elem):
@@ -44,6 +47,7 @@ def indent(elem, level=0):
         if level and (not elem.tail or not elem.tail.strip()):
             elem.tail = i
 
+# Generate SUMO configuration file
 def generate_config(net_file: str, route_file: str, start_time: int, end_time: int, output_file: str, no_output=False):
     config_root = ET.Element("configuration")
 

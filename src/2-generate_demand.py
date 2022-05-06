@@ -20,6 +20,7 @@ else:
     sys.exit("please declare environment variable 'SUMO_HOME'")
 
 
+# Generate a mock route file in order to run simulation
 def generate_temp_route_file():
     temp_routes_root = ET.Element('routes')
 
@@ -38,6 +39,7 @@ def generate_temp_route_file():
     temp_trips_tree.write('../temp/temp.routes.xml', encoding='utf-8', xml_declaration=True)
     return '../temp/temp.routes.xml'
 
+# Retrieve random drivable edge
 def get_random_drivable_edge(tazs, edges, drivable_edges) -> Edge:
     if (random.random() <= 0.5):
         rand = random.random()
@@ -60,7 +62,7 @@ def run():
     drivable_edges: List[str] = retrieve('../temp/drivable_edges.pkl')
     simulation: Simulation = retrieve('../temp/simulation.pkl')
 
-    
+
     # Start sumo
     generate_config(simulation.net_file, generate_temp_route_file(), simulation.start_time, simulation.end_time, '../temp/temp.sumocfg', True)
     sumoBinary = checkBinary('sumo')
@@ -86,6 +88,7 @@ def run():
     
     simulation.start_time = simulation.start_hour*3600
     simulation.end_time = simulation.end_hour*3600
+
 
     # Calculate distribution from aggregated data
     total = 0;
@@ -164,10 +167,12 @@ def run():
     trips.sort()
 
 
-    # Store trips and simulation in file
+    # Write data to file
     store(trips, '../temp/trips.pkl')
     store(simulation, '../temp/simulation.pkl')
 
+
+    # Stop SUMO
     traci.close()
         
 

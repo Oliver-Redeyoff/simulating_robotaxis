@@ -14,13 +14,15 @@ from shapely.geometry import shape, Point
 from datatypes import Count, CountPoint, P, City, Simulation
 from utilities import create_dir, store
 
+# We need to import python modules from the $SUMO_HOME/tools directory
 if 'SUMO_HOME' in os.environ:
     sys.path.append(os.path.join(os.environ['SUMO_HOME'], 'tools'))
     import osmGet
 else:
     sys.exit("please declare environment variable 'SUMO_HOME'")
-    
 
+
+# Add counts to the list of counts for point
 def aggregate_counts(count_point: CountPoint, raw_count):
 
     for count in count_point.counts:
@@ -48,7 +50,8 @@ def run():
         None
     )
 
-    # Get position of city using google maps places api
+
+    # Get position of city using Google maps places API
     x = requests.get('https://maps.googleapis.com/maps/api/geocode/json?address=' 
                     + city.name + ', UK&key=AIzaSyAhmPLZ2MEGQK1-7rTmyjbN_r6Pnqjr8YM')
     res = json.loads(x.text)
@@ -56,12 +59,12 @@ def run():
     city.geometry = res['results'][0]['geometry']
     city.bbox = city.geometry['viewport']
     m = folium.Map(
-        location=[city.geometry['location']['lat'], 
-        city.geometry['location']['lng']]
+            location=[city.geometry['location']['lat'], 
+            city.geometry['location']['lng']]
         )
 
 
-    # Download osm data using bounding box of place
+    # Download OSM data using bounding box of place
     create_dir('../temp')
     status = 504
     attempts = 1
@@ -79,7 +82,7 @@ def run():
         attempts += 1
 
 
-    # Figure out which local authority the town is in
+    # Figure out which local authority the city is in
     with open('local_authorities.geojson', 'r') as myfile:
         local_authorities_raw = myfile.read()
     local_authorities = json.loads(local_authorities_raw)
@@ -102,7 +105,7 @@ def run():
         sys.exit("Could not find city in any british local authority")
 
     
-    # Get the population of the city
+    # Retrieve the population of the city
     with open('./city_populations.csv', mode='r') as csv_city_populations:
         csv_reader = csv.DictReader(csv_city_populations)
         for row in csv_reader:
@@ -124,6 +127,7 @@ def run():
             'taxi.routes.xml')
         store(simulation, '../temp/simulation.pkl')
 
+    
     # Get count point data for relevant local authority
     x = requests.get(
         'https://storage.googleapis.com/dft-statistics/road-traffic/downloads/rawcount/local_authority_id/' + \
@@ -135,10 +139,9 @@ def run():
 
 
     # Reduce each count for a point at a certain time of day into one average value
-    # only include points from 2018
-    raw_counts = [point for point in raw_counts if point[P.year.value]=='2018'];
+    # Only include counts from 2019 and before
+    raw_counts = [point for point in raw_counts if int(point[P.year.value]) <= 2019];
 
-    # now reduce all values to single averages for each time of day
     count_points: List[CountPoint] = []
 
     # reduce raw counts to average count at each count point
@@ -162,14 +165,14 @@ def run():
             )
             aggregate_counts(new_count_point, raw_count)
             count_points.append(new_count_point)
-
+        # if count_point has already been defined, add count to it
         else:
             for count_point in count_points:
                 if (count_point.id == count_point_id):
                     aggregate_counts(count_point, raw_count)
 
 
-    # Write count_point data to file
+    # Write data to file
     store(count_points, '../temp/count_points.pkl')
 
 if __name__ == '__main__':
